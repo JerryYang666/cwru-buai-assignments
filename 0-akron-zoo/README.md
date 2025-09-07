@@ -127,3 +127,8 @@ Each assignment requires 3 parts to be completed and submitted:
 - `NEW ID`: Unique ID for each customer  
 
 ---
+
+### Convert .py to .ipynb using
+```bash
+jupytext --to ipynb akron-zoo.py
+```
