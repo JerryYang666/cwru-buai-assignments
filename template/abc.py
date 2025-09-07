@@ -10,8 +10,14 @@
 # %%
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
+import random
+
+# Set seeds for reproducibility
+np.random.seed(42)
+random.seed(42)
+
+# %% [markdown]
+# ### Load and Explore Data
 
 # %%
 def f(x):
