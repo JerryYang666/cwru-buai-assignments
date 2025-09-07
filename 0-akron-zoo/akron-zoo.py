@@ -9,6 +9,12 @@
 
 # %%
 import pandas as pd
+import numpy as np
+import random
+
+# Set seeds for reproducibility
+np.random.seed(42)
+random.seed(42)
 
 # %% [markdown]
 # ### Load and Explore Data
