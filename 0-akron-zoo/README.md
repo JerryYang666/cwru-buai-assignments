@@ -132,6 +132,7 @@ Each assignment requires 3 parts to be completed and submitted:
 ```bash
 jupytext --to ipynb akron-zoo.py
 ```
+
 ### Convert .ipynb to .py using
 ```bash
 jupytext --to py akron-zoo.ipynb
