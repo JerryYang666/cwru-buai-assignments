@@ -1,6 +1,6 @@
-def main():
-    print("Hello from 0-akron-zoo!")
+# %% [markdown]
+# This is a markdown cell
 
-
-if __name__ == "__main__":
-    main()
+# %%
+def f(x):
+  return 3*x+1
