@@ -205,3 +205,16 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# MacOS
+.DS_Store
+
+# Data files
+data/
+data_cleaned/
+data_raw/
+data_processed/
+data_transformed/
+data_visualized/
+data_modeled/
+data_predicted/
