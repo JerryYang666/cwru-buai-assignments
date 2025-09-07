@@ -1,8 +1,8 @@
 # %% [markdown]
-# BUAI 446 Assignment 1 - ABC
-# Name: [Your Name]
-# NetID: [Your NetID]
-# Date: [Your Date]
+# BUAI 446 Assignment 1 - Akron Zoo  
+# Name: Ruihuang Yang  
+# NetID: rxy216  
+# Date: 09/07/2025  
 
 # %%
 def f(x):
