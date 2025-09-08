@@ -3,6 +3,7 @@
 # Name: Ruihuang Yang  
 # NetID: rxy216  
 # Date: 09/07/2025  
+# Disclaimer: Some code in this document was generated with assistance from Claude 4.0 Sonnet.
 
 # %% [markdown]
 # ### Import libraries
