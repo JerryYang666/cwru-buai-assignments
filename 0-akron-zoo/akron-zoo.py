@@ -13,9 +13,11 @@ import pandas as pd
 import numpy as np
 import random
 
+SEED = 42
+
 # Set seeds for reproducibility
-np.random.seed(42)
-random.seed(42)
+np.random.seed(SEED)
+random.seed(SEED)
 
 # %% [markdown]
 # ### EDA
@@ -789,7 +791,7 @@ print("=" * 50)
 
 # Split training data into train/validation (80/20 split, stratified)
 X_train_split, X_val_split, y_train_split, y_val_split = train_test_split(
-    X_train_processed, y_train, test_size=0.2, random_state=42, stratify=y_train
+    X_train_processed, y_train, test_size=0.2, random_state=SEED, stratify=y_train
 )
 
 print(f"Training split: {X_train_split.shape}")
@@ -909,16 +911,16 @@ print("=" * 50)
 
 models = {
     "Logistic Regression": LogisticRegression(
-        random_state=42, max_iter=1000, penalty="l2"
+        random_state=SEED, max_iter=1000, penalty="l2"
     ),
     "SVM": SVC(
-        random_state=42,
+        random_state=SEED,
         probability=True,  # Enable probability estimates for ROC-AUC
         kernel="rbf",
     ),
     "Naive Bayes": GaussianNB(),
-    "Random Forest": RandomForestClassifier(random_state=42, n_estimators=100),
-    "Gradient Boosting": GradientBoostingClassifier(random_state=42, n_estimators=100),
+    "Random Forest": RandomForestClassifier(random_state=SEED, n_estimators=100),
+    "Gradient Boosting": GradientBoostingClassifier(random_state=SEED, n_estimators=100),
 }
 
 for name, model in models.items():
@@ -933,7 +935,7 @@ print("\nCross-Validation Evaluation:")
 print("=" * 50)
 
 # Setup stratified k-fold cross-validation
-cv_folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+cv_folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=SEED)
 
 # Store results
 cv_results = {}
