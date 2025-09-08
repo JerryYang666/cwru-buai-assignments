@@ -519,3 +519,457 @@ print(f"Processed training shape: {X_train_processed.shape}")
 print(f"Processed test shape: {X_test_processed.shape}")
 print("=" * 50)
 
+
+# %%
+# Get feature names after preprocessing
+print("\nFeature Names After Preprocessing:")
+print("=" * 50)
+
+# Get feature names from the fitted preprocessor
+feature_names = []
+
+# Get names from each transformer
+categorical_names = list(preprocessor.named_transformers_['categorical'].get_feature_names_out(categorical_nonlinear))
+ordinal_names = [f"ordinal__{col}" for col in ordinal_linear]
+standardized_names = [f"standardized__{col}" for col in standardized_features] 
+numeric_names = [f"numeric__{col}" for col in numeric_features]
+
+# Combine all feature names
+feature_names = categorical_names + ordinal_names + standardized_names + numeric_names
+
+print(f"Total features after preprocessing: {len(feature_names)}")
+print(f"Feature expansion: {X_train_raw.shape[1]} → {len(feature_names)} features")
+print("\nFeature breakdown:")
+print(f"• Categorical (dummy): {len(categorical_names)} features")
+print(f"• Ordinal (scaled): {len(ordinal_names)} features") 
+print(f"• Standardized (passthrough): {len(standardized_names)} features")
+print(f"• Numeric (scaled): {len(numeric_names)} features")
+
+# Show first few categorical feature names (dummy variables)
+print(f"\nSample categorical features (first 10):")
+print(categorical_names[:10])
+print("=" * 50)
+
+
+# %%
+# Create validation split from training data
+print("\nCreating Validation Split:")
+print("=" * 50)
+
+# Split training data into train/validation (80/20 split, stratified)
+X_train_split, X_val_split, y_train_split, y_val_split = train_test_split(
+    X_train_processed, y_train, 
+    test_size=0.2, 
+    random_state=42, 
+    stratify=y_train
+)
+
+print(f"Training split: {X_train_split.shape}")
+print(f"Validation split: {X_val_split.shape}")
+print(f"Training target distribution: {np.bincount(y_train_split)}")
+print(f"Validation target distribution: {np.bincount(y_val_split)}")
+print(f"Training upgrade rate: {y_train_split.mean():.3f}")
+print(f"Validation upgrade rate: {y_val_split.mean():.3f}")
+print("=" * 50)
+
+
+# %% [markdown]
+# ### Feature Engineering & Analysis
+
+# %%
+# Create DataFrame for easier manipulation and feature engineering
+print("\nFeature Engineering Setup:")
+print("=" * 50)
+
+# Convert to DataFrame for easier feature engineering
+X_train_df = pd.DataFrame(X_train_processed, columns=feature_names)
+X_val_df = pd.DataFrame(X_val_split, columns=feature_names)
+X_test_df = pd.DataFrame(X_test_processed, columns=feature_names)
+
+print(f"Training DataFrame shape: {X_train_df.shape}")
+print(f"Validation DataFrame shape: {X_val_df.shape}")
+print(f"Test DataFrame shape: {X_test_df.shape}")
+print("=" * 50)
+
+
+# %%
+# Correlation analysis and feature relationships
+print("\nCorrelation Analysis:")
+print("=" * 50)
+
+# Calculate correlation matrix
+correlation_matrix = X_train_df.corr()
+
+# Find highly correlated features (threshold = 0.8)
+high_corr_pairs = []
+for i in range(len(correlation_matrix.columns)):
+    for j in range(i+1, len(correlation_matrix.columns)):
+        if abs(correlation_matrix.iloc[i, j]) > 0.8:
+            high_corr_pairs.append((
+                correlation_matrix.columns[i], 
+                correlation_matrix.columns[j], 
+                correlation_matrix.iloc[i, j]
+            ))
+
+print(f"Found {len(high_corr_pairs)} highly correlated feature pairs (|r| > 0.8):")
+for feat1, feat2, corr in high_corr_pairs[:10]:  # Show first 10
+    print(f"  {feat1} ↔ {feat2}: {corr:.3f}")
+
+if len(high_corr_pairs) > 10:
+    print(f"  ... and {len(high_corr_pairs) - 10} more pairs")
+
+print("=" * 50)
+
+
+# %%
+# Feature correlation with target variable
+print("\nFeature-Target Correlations:")
+print("=" * 50)
+
+# Calculate correlations with target
+target_correlations = []
+for feature in feature_names:
+    corr = np.corrcoef(X_train_df[feature], y_train_split)[0, 1]
+    target_correlations.append((feature, corr))
+
+# Sort by absolute correlation
+target_correlations.sort(key=lambda x: abs(x[1]), reverse=True)
+
+print("Top 15 features most correlated with upgrade decision:")
+for i, (feature, corr) in enumerate(target_correlations[:15], 1):
+    print(f"{i:2d}. {feature:<40}: {corr:6.3f}")
+
+print("\nBottom 5 features least correlated with upgrade decision:")
+for i, (feature, corr) in enumerate(target_correlations[-5:], len(target_correlations)-4):
+    print(f"{i:2d}. {feature:<40}: {corr:6.3f}")
+
+print("=" * 50)
+
+
+# %% [markdown]
+# ### Machine Learning Model Development
+# 
+# #### Implementing 5 models: Logistic Regression, SVM, Naive Bayes, Random Forest, GBM
+
+# %%
+# Import machine learning libraries
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.model_selection import cross_val_score, StratifiedKFold
+from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score, roc_curve
+import time
+
+print("Machine Learning Model Setup")
+print("=" * 50)
+
+
+# %%
+# Define models with initial parameters
+print("\nInitializing Models:")
+print("=" * 50)
+
+models = {
+    'Logistic Regression': LogisticRegression(
+        random_state=42,
+        max_iter=1000,
+        penalty='l2'
+    ),
+    
+    'SVM': SVC(
+        random_state=42,
+        probability=True,  # Enable probability estimates for ROC-AUC
+        kernel='rbf'
+    ),
+    
+    'Naive Bayes': GaussianNB(),
+    
+    'Random Forest': RandomForestClassifier(
+        random_state=42,
+        n_estimators=100
+    ),
+    
+    'Gradient Boosting': GradientBoostingClassifier(
+        random_state=42,
+        n_estimators=100
+    )
+}
+
+for name, model in models.items():
+    print(f"✓ {name}: {type(model).__name__}")
+
+print("=" * 50)
+
+
+# %%
+# Cross-validation evaluation
+print("\nCross-Validation Evaluation:")
+print("=" * 50)
+
+# Setup stratified k-fold cross-validation
+cv_folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+# Store results
+cv_results = {}
+training_times = {}
+
+print("Performing 5-fold cross-validation for each model...")
+print("\nModel Performance (CV Mean ± Std):")
+print("-" * 70)
+
+for name, model in models.items():
+    print(f"\nTraining {name}...")
+    
+    # Time the training
+    start_time = time.time()
+    
+    # Perform cross-validation
+    cv_scores = cross_val_score(
+        model, X_train_split, y_train_split, 
+        cv=cv_folds, scoring='roc_auc', n_jobs=-1
+    )
+    
+    end_time = time.time()
+    training_time = end_time - start_time
+    
+    # Store results
+    cv_results[name] = cv_scores
+    training_times[name] = training_time
+    
+    # Print results
+    mean_score = cv_scores.mean()
+    std_score = cv_scores.std()
+    print(f"{name:<20}: {mean_score:.4f} ± {std_score:.4f} (Time: {training_time:.2f}s)")
+
+print("-" * 70)
+print("Metric: ROC-AUC (Higher is better)")
+print("=" * 50)
+
+
+# %%
+# Train models on full training split and evaluate on validation
+print("\nValidation Set Evaluation:")
+print("=" * 50)
+
+# Store validation results
+val_results = {}
+trained_models = {}
+
+print("Training models on full training split and evaluating on validation set...")
+print("\nValidation Performance:")
+print("-" * 80)
+print(f"{'Model':<20} {'ROC-AUC':<8} {'Accuracy':<8} {'Precision':<10} {'Recall':<8} {'F1-Score':<8}")
+print("-" * 80)
+
+for name, model in models.items():
+    # Train model on training split
+    model.fit(X_train_split, y_train_split)
+    trained_models[name] = model
+    
+    # Predict on validation set
+    val_pred = model.predict(X_val_split)
+    val_pred_proba = model.predict_proba(X_val_split)[:, 1]
+    
+    # Calculate metrics
+    val_auc = roc_auc_score(y_val_split, val_pred_proba)
+    val_accuracy = (val_pred == y_val_split).mean()
+    
+    # Get precision, recall, f1 from classification report
+    report = classification_report(y_val_split, val_pred, output_dict=True)
+    val_precision = report['1']['precision']
+    val_recall = report['1']['recall']
+    val_f1 = report['1']['f1-score']
+    
+    # Store results
+    val_results[name] = {
+        'auc': val_auc,
+        'accuracy': val_accuracy,
+        'precision': val_precision,
+        'recall': val_recall,
+        'f1': val_f1,
+        'predictions': val_pred,
+        'probabilities': val_pred_proba
+    }
+    
+    # Print results
+    print(f"{name:<20} {val_auc:<8.4f} {val_accuracy:<8.4f} {val_precision:<10.4f} {val_recall:<8.4f} {val_f1:<8.4f}")
+
+print("-" * 80)
+print("=" * 50)
+
+
+# %%
+# Model ranking and selection
+print("\nModel Ranking and Selection:")
+print("=" * 50)
+
+# Rank models by ROC-AUC on validation set
+model_ranking = sorted(val_results.items(), key=lambda x: x[1]['auc'], reverse=True)
+
+print("Model Performance Ranking (by ROC-AUC):")
+print("-" * 60)
+print(f"{'Rank':<5} {'Model':<20} {'ROC-AUC':<10} {'CV Score':<12} {'Robustness'}")
+print("-" * 60)
+
+for i, (name, results) in enumerate(model_ranking, 1):
+    cv_mean = cv_results[name].mean()
+    cv_std = cv_results[name].std()
+    robustness = "High" if cv_std < 0.02 else "Medium" if cv_std < 0.05 else "Low"
+    
+    print(f"{i:<5} {name:<20} {results['auc']:<10.4f} {cv_mean:.4f}±{cv_std:.3f} {robustness}")
+
+print("-" * 60)
+
+# Select best model
+best_model_name = model_ranking[0][0]
+best_model = trained_models[best_model_name]
+best_results = val_results[best_model_name]
+
+print(f"\n🏆 BEST MODEL: {best_model_name}")
+print(f"   • ROC-AUC: {best_results['auc']:.4f}")
+print(f"   • Accuracy: {best_results['accuracy']:.4f}")
+print(f"   • F1-Score: {best_results['f1']:.4f}")
+print(f"   • Cross-validation: {cv_results[best_model_name].mean():.4f} ± {cv_results[best_model_name].std():.3f}")
+print("=" * 50)
+
+
+# %%
+# Feature importance analysis for interpretable models
+print("\nFeature Importance Analysis:")
+print("=" * 50)
+
+# Extract feature importance from different models
+importance_results = {}
+
+# 1. Logistic Regression - Coefficients
+if 'Logistic Regression' in trained_models:
+    lr_model = trained_models['Logistic Regression']
+    lr_coef = lr_model.coef_[0]
+    importance_results['Logistic Regression'] = list(zip(feature_names, lr_coef))
+
+# 2. Random Forest - Feature Importance
+if 'Random Forest' in trained_models:
+    rf_model = trained_models['Random Forest']
+    rf_importance = rf_model.feature_importances_
+    importance_results['Random Forest'] = list(zip(feature_names, rf_importance))
+
+# 3. Gradient Boosting - Feature Importance
+if 'Gradient Boosting' in trained_models:
+    gb_model = trained_models['Gradient Boosting']
+    gb_importance = gb_model.feature_importances_
+    importance_results['Gradient Boosting'] = list(zip(feature_names, gb_importance))
+
+# Display feature importance for best model
+if best_model_name in importance_results:
+    print(f"\nTop 15 Most Important Features ({best_model_name}):")
+    print("-" * 70)
+    
+    best_importance = importance_results[best_model_name]
+    if best_model_name == 'Logistic Regression':
+        # Sort by absolute coefficient value
+        best_importance.sort(key=lambda x: abs(x[1]), reverse=True)
+        print(f"{'Feature':<40} {'Coefficient':<15} {'Abs Value':<10}")
+        print("-" * 70)
+        for i, (feature, coef) in enumerate(best_importance[:15], 1):
+            print(f"{i:2d}. {feature:<35} {coef:8.4f} {abs(coef):8.4f}")
+    else:
+        # Sort by importance value
+        best_importance.sort(key=lambda x: x[1], reverse=True)
+        print(f"{'Feature':<40} {'Importance':<15}")
+        print("-" * 70)
+        for i, (feature, importance) in enumerate(best_importance[:15], 1):
+            print(f"{i:2d}. {feature:<35} {importance:8.4f}")
+
+print("=" * 50)
+
+
+# %%
+# Final test set evaluation
+print("\nFinal Test Set Evaluation:")
+print("=" * 50)
+
+# Retrain best model on full training data (training + validation)
+print(f"Retraining {best_model_name} on full training data...")
+final_model = models[best_model_name]
+final_model.fit(X_train_processed, y_train)
+
+# Predict on test set
+test_pred = final_model.predict(X_test_processed)
+test_pred_proba = final_model.predict_proba(X_test_processed)[:, 1]
+
+# Calculate test metrics
+test_auc = roc_auc_score(y_test, test_pred_proba)
+test_accuracy = (test_pred == y_test).mean()
+
+# Get detailed metrics
+test_report = classification_report(y_test, test_pred, output_dict=True)
+test_precision = test_report['1']['precision']
+test_recall = test_report['1']['recall']
+test_f1 = test_report['1']['f1-score']
+
+print(f"\nFinal Model Performance on Test Set:")
+print("-" * 50)
+print(f"Model: {best_model_name}")
+print(f"ROC-AUC:   {test_auc:.4f}")
+print(f"Accuracy:  {test_accuracy:.4f}")
+print(f"Precision: {test_precision:.4f}")
+print(f"Recall:    {test_recall:.4f}")
+print(f"F1-Score:  {test_f1:.4f}")
+
+# Confusion Matrix
+test_cm = confusion_matrix(y_test, test_pred)
+print(f"\nConfusion Matrix:")
+print(f"                 Predicted")
+print(f"Actual    No Upgrade  Upgrade")
+print(f"No Upgrade    {test_cm[0,0]:4d}     {test_cm[0,1]:4d}")
+print(f"Upgrade       {test_cm[1,0]:4d}     {test_cm[1,1]:4d}")
+
+print("-" * 50)
+print("=" * 50)
+
+
+# %%
+# Business insights and recommendations
+print("\nBusiness Insights & Recommendations:")
+print("=" * 60)
+
+print(f"\n📊 MODEL PERFORMANCE SUMMARY:")
+print(f"   • Best performing model: {best_model_name}")
+print(f"   • Test set accuracy: {test_accuracy:.1%}")
+print(f"   • Test set ROC-AUC: {test_auc:.3f}")
+print(f"   • Model can identify {test_recall:.1%} of customers who will upgrade")
+print(f"   • {test_precision:.1%} of predicted upgrades are correct")
+
+# Calculate business impact
+total_customers = len(test_data)
+actual_upgrades = y_test.sum()
+predicted_upgrades = test_pred.sum()
+correctly_identified = (test_pred & y_test).sum()
+
+print(f"\n💼 BUSINESS IMPACT:")
+print(f"   • Total test customers: {total_customers}")
+print(f"   • Actual upgrades: {actual_upgrades} ({actual_upgrades/total_customers:.1%})")
+print(f"   • Predicted upgrades: {predicted_upgrades}")
+print(f"   • Correctly identified upgrades: {correctly_identified}")
+print(f"   • Potential revenue impact: High (targeted marketing efficiency)")
+
+print(f"\n🎯 KEY RECOMMENDATIONS:")
+if best_model_name in importance_results:
+    top_features = importance_results[best_model_name]
+    if best_model_name == 'Logistic Regression':
+        top_features.sort(key=lambda x: abs(x[1]), reverse=True)
+    else:
+        top_features.sort(key=lambda x: x[1], reverse=True)
+    
+    print(f"   • Focus on top predictive features:")
+    for i, (feature, _) in enumerate(top_features[:3], 1):
+        clean_feature = feature.replace('standardized__', '').replace('categorical__', '').replace('numeric__', '').replace('ordinal__', '')
+        print(f"     {i}. {clean_feature}")
+
+print(f"   • Implement targeted retention strategies")
+print(f"   • Use model for customer segmentation")
+print(f"   • Monitor model performance quarterly")
+
+print("=" * 60)
+
