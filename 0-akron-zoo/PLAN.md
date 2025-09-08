@@ -47,22 +47,6 @@ This plan outlines our approach to identify explainable and reliable predictors 
 - Target variable correlation analysis
 - Outlier detection and treatment strategy
 
-### 3.2 Bivariate Analysis
-- Feature-target relationships using appropriate visualizations
-- Chi-square tests for categorical features
-- Correlation analysis for continuous features
-- Statistical significance testing
-
-### 3.3 Multivariate Analysis
-- Feature correlation matrix and multicollinearity assessment
-- Principal Component Analysis for perception features
-- Interaction effect exploration between feature categories
-
-### 3.4 Segmentation Analysis
-- Customer profiling by upgrade behavior
-- Demographic segment analysis
-- Behavioral pattern identification
-
 ## 4. Model Development Strategy
 
 ### 4.1 Model Portfolio
@@ -97,12 +81,6 @@ We will implement and compare five models, each offering different bias-variance
 - **Strategy:** Randomized search followed by grid search refinement
 - **Cross-validation:** 5-fold stratified CV for robust evaluation
 - **Metrics:** Focus on AUC-ROC, precision, recall, and F1-score
-
-### 4.3 Feature Engineering Experiments
-- **Perception Score Combinations:** Create composite satisfaction and value indices
-- **Demographic Interactions:** Test age×education, family_size×children combinations
-- **Behavioral Ratios:** Distance-to-visits ratios, engagement intensity measures
-- **Polynomial Features:** Test quadratic terms for key continuous variables
 
 ## 5. Model Evaluation Framework
 
