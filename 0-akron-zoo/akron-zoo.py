@@ -908,7 +908,7 @@ test_precision = test_report['1']['precision']
 test_recall = test_report['1']['recall']
 test_f1 = test_report['1']['f1-score']
 
-print(f"\nFinal Model Performance on Test Set:")
+print("\nFinal Model Performance on Test Set:")
 print("-" * 50)
 print(f"Model: {best_model_name}")
 print(f"ROC-AUC:   {test_auc:.4f}")
@@ -919,9 +919,9 @@ print(f"F1-Score:  {test_f1:.4f}")
 
 # Confusion Matrix
 test_cm = confusion_matrix(y_test, test_pred)
-print(f"\nConfusion Matrix:")
-print(f"                 Predicted")
-print(f"Actual    No Upgrade  Upgrade")
+print("\nConfusion Matrix:")
+print("                 Predicted")
+print("Actual    No Upgrade  Upgrade")
 print(f"No Upgrade    {test_cm[0,0]:4d}     {test_cm[0,1]:4d}")
 print(f"Upgrade       {test_cm[1,0]:4d}     {test_cm[1,1]:4d}")
 
@@ -934,7 +934,7 @@ print("=" * 50)
 print("\nBusiness Insights & Recommendations:")
 print("=" * 60)
 
-print(f"\n📊 MODEL PERFORMANCE SUMMARY:")
+print("\n📊 MODEL PERFORMANCE SUMMARY:")
 print(f"   • Best performing model: {best_model_name}")
 print(f"   • Test set accuracy: {test_accuracy:.1%}")
 print(f"   • Test set ROC-AUC: {test_auc:.3f}")
@@ -947,14 +947,14 @@ actual_upgrades = y_test.sum()
 predicted_upgrades = test_pred.sum()
 correctly_identified = (test_pred & y_test).sum()
 
-print(f"\n💼 BUSINESS IMPACT:")
+print("\n💼 BUSINESS IMPACT:")
 print(f"   • Total test customers: {total_customers}")
 print(f"   • Actual upgrades: {actual_upgrades} ({actual_upgrades/total_customers:.1%})")
 print(f"   • Predicted upgrades: {predicted_upgrades}")
 print(f"   • Correctly identified upgrades: {correctly_identified}")
-print(f"   • Potential revenue impact: High (targeted marketing efficiency)")
+print("   • Potential revenue impact: High (targeted marketing efficiency)")
 
-print(f"\n🎯 KEY RECOMMENDATIONS:")
+print("\n🎯 KEY RECOMMENDATIONS:")
 if best_model_name in importance_results:
     top_features = importance_results[best_model_name]
     if best_model_name == 'Logistic Regression':
@@ -962,14 +962,14 @@ if best_model_name in importance_results:
     else:
         top_features.sort(key=lambda x: x[1], reverse=True)
     
-    print(f"   • Focus on top predictive features:")
+    print("   • Focus on top predictive features:")
     for i, (feature, _) in enumerate(top_features[:3], 1):
         clean_feature = feature.replace('standardized__', '').replace('categorical__', '').replace('numeric__', '').replace('ordinal__', '')
         print(f"     {i}. {clean_feature}")
 
-print(f"   • Implement targeted retention strategies")
-print(f"   • Use model for customer segmentation")
-print(f"   • Monitor model performance quarterly")
+print("   • Implement targeted retention strategies")
+print("   • Use model for customer segmentation")
+print("   • Monitor model performance quarterly")
 
 print("=" * 60)
 
