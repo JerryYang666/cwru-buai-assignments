@@ -69,8 +69,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
 from scipy.stats import chi2_contingency
+import os
 
 warnings.filterwarnings("ignore")
+
+# Create graphs directory if it doesn't exist
+os.makedirs('graphs', exist_ok=True)
 
 # Set up beautiful styling for plots
 plt.style.use("seaborn-v0_8")
@@ -168,7 +172,8 @@ ax2.text(
 )
 
 plt.tight_layout()
-plt.show()
+plt.savefig('graphs/01_dataset_balance.png', dpi=300, bbox_inches='tight')
+plt.close()
 
 print("Dataset Balance Summary:")
 print(
@@ -401,7 +406,8 @@ ax4.set_xticklabels(["No Upgrade", "Upgrade"], rotation=0)
 ax4.set_yticklabels(ax4.get_yticklabels(), rotation=0)
 
 plt.tight_layout()
-plt.show()
+plt.savefig('graphs/02_distance_analysis.png', dpi=300, bbox_inches='tight')
+plt.close()
 
 
 # %%
@@ -574,7 +580,8 @@ ax2.set_ylim(0, max(visit_counts.values) * 1.15)
 ax2.grid(axis="y", alpha=0.3, linestyle="--")
 
 plt.tight_layout()
-plt.show()
+plt.savefig('graphs/03_visit_frequency_analysis.png', dpi=300, bbox_inches='tight')
+plt.close()
 
 # Print summary statistics
 print("\nVisit Frequency vs Upgrade Analysis:")
