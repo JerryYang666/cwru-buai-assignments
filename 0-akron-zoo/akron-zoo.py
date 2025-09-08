@@ -919,8 +919,8 @@ models = {
         kernel="rbf",
     ),
     "Naive Bayes": GaussianNB(),
-    "Random Forest": RandomForestClassifier(random_state=SEED, n_estimators=100),
-    "Gradient Boosting": GradientBoostingClassifier(random_state=SEED, n_estimators=100),
+    "Random Forest": RandomForestClassifier(random_state=SEED, n_estimators=500),
+    "Gradient Boosting": GradientBoostingClassifier(random_state=SEED, n_estimators=500),
 }
 
 for name, model in models.items():
