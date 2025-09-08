@@ -630,12 +630,12 @@ categorical_nonlinear = [
     "educ",  # 1=Some college, 2=College, 3=Graduate school (treated as nominal per user)
     "educnew",  # Recoded education variable (nominal)
     "age_rec",  # 1=18-34, 2=35-44, 3=45-54, 4=54+ (treated as nominal per user)
+    "tvis",  # 1=≤2, 2=3-4, 3=5-6, 4=7-8, 5=>8 visits (treated as nominal per user)
 ]
 
 # Ordinal features with linear relationship - use numeric + normalize
 ordinal_linear = [
     "dist",  # 1=<10min, 2=10-20min, 3=21-30min, 4=>30min (clear distance progression)
-    "tvis",  # 1=≤2, 2=3-4, 3=5-6, 4=7-8, 5=>8 visits (treated as nominal per user)
 ]
 
 # Already standardized perception features (mean≈0, std≈1)
@@ -770,7 +770,7 @@ print(f"• Standardized (passthrough): {len(standardized_names)} features")
 print(f"• Numeric (scaled): {len(numeric_names)} features")
 
 # Show first few categorical feature names (dummy variables)
-print(f"\nSample categorical features (first 10):")
+print("\nSample categorical features (first 10):")
 print(categorical_names[:10])
 print("=" * 50)
 
@@ -852,7 +852,7 @@ print("=" * 50)
 # Calculate correlations with target
 target_correlations = []
 for feature in feature_names:
-    corr = np.corrcoef(X_train_df[feature], y_train_split)[0, 1]
+    corr = np.corrcoef(X_train_df[feature], y_train)[0, 1]
     target_correlations.append((feature, corr))
 
 # Sort by absolute correlation
