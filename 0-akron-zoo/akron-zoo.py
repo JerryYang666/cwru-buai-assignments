@@ -4,6 +4,10 @@
 # NetID: rxy216
 # Date: 09/07/2025
 # Disclaimer: Some code in this document was generated with assistance from Claude 4.0 Sonnet.
+# Prompts used:
+# - "Please clean up the code, make it more well formatted and more readable. For all comments, please optimize the grammar and sentence structure."
+# - "Please generate beautiful plots for this ML pipeline at important points along the way so that I can use the visualizations to report the results to executives of the company."
+# - "Please add comprehensive print statements in the code so that I can get lots of useful information for the report to executives of the company."
 
 # %% [markdown]
 # ### Import libraries
