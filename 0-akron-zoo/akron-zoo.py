@@ -1641,7 +1641,6 @@ fastest = min(training_times.items(), key=lambda x: x[1])
 print(f"   • Best CV performance: {best_cv[0]} ({best_cv[1].mean():.4f})")
 print(f"   • Most robust model: {most_robust[0]} (std: {most_robust[1].std():.4f})")
 print(f"   • Fastest training: {fastest[0]} ({fastest[1]:.2f}s)")
-print(f"   • All models show good ROC-AUC scores (> 0.7)")
 
 print(f"\n🎯 BEST MODEL ({best_model_name}) INSIGHTS:")
 print(f"   • Validation AUC: {val_results[best_model_name]['auc']:.4f}")
