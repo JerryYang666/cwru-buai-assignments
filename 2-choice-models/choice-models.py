@@ -14,6 +14,12 @@ import random
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.model_selection import train_test_split
+import warnings
+warnings.filterwarnings('ignore')
 
 # Set plotting style for beautiful visualizations
 plt.style.use('seaborn-v0_8')
@@ -295,3 +301,344 @@ print()
 print("• **Clear cost-convenience trade-offs across modes**: Air offers the fastest travel (avg 125 min) but")
 print("  highest cost ($98), while train provides good value with moderate costs ($37) and no waiting time")
 print("  penalty. Car emerges as the most chosen mode overall (28.1%) with zero waiting and moderate costs.")
+
+# %% [markdown]
+# ## Q3 - Feature Specification & MNL Estimation
+# 
+
+# %% [markdown]
+# ### Feature Specification
+# 
+# **Base Alternative**: Car (reference category)
+# - ASCs estimated for Air, Train, and Bus relative to Car
+# 
+# **Alternative-Varying Variables** (expected negative signs for disutility):
+# - `wait`: Terminal waiting time (higher = less attractive) 
+# - `travel`: Travel time in vehicle (higher = less attractive)
+# - `vcost`: Vehicle cost component (higher = less attractive)
+# - `gcost`: Generalized cost measure (higher = less attractive)
+# 
+# **Individual-Specific Interactions** (10 variables from Q1):
+# - `income_air`, `income_train`, `income_bus`: Income interactions with modes
+# - `size_air`, `size_train`, `size_bus`: Party size interactions with modes  
+# - `wait_income`, `travel_income`: Cost/time × income interactions
+# - `vcost_size`, `gcost_size`: Cost × party size interactions
+# 
+# **Total Features**: 14 variables (4 alternative-varying + 10 interactions) > 8 ✓
+
+# %% [markdown]
+# ### Model Estimation Setup
+
+# %%
+# Prepare data for MNL estimation
+print("=== MNL MODEL SETUP ===")
+
+# Select features for the model
+alternative_vars = ['wait', 'travel', 'vcost', 'gcost']
+interaction_vars = ['income_air', 'income_train', 'income_bus', 
+                   'size_air', 'size_train', 'size_bus',
+                   'wait_income', 'travel_income', 'vcost_size', 'gcost_size']
+
+# Alternative-Specific Constants (ASCs) - already created as dummy variables
+asc_vars = ['air', 'train', 'bus']  # car is reference
+
+# All features for the model
+all_features = alternative_vars + interaction_vars + asc_vars
+print(f"Model features ({len(all_features)} total):")
+for i, feat in enumerate(all_features, 1):
+    print(f"  {i:2d}. {feat}")
+
+# Create X (features) and y (target)
+X = df_clean[all_features].values
+y = df_clean['alts'].values  # Use mode as target (will convert to numeric)
+
+# Convert target to numeric (needed for sklearn)
+mode_mapping = {'car': 0, 'air': 1, 'bus': 2, 'train': 3}
+y_numeric = np.array([mode_mapping[mode] for mode in y])
+mode_names = ['car', 'air', 'bus', 'train']
+
+print("\nTarget distribution:")
+unique, counts = np.unique(y_numeric, return_counts=True)
+for i, (mode_num, count) in enumerate(zip(unique, counts)):
+    print(f"  {mode_names[mode_num]}: {count} ({count/len(y)*100:.1f}%)")
+
+# %% [markdown] 
+# ### MNL Model Estimation
+
+# %%
+# Fit Multinomial Logistic Regression
+print("\n=== FITTING MNL MODEL ===")
+
+# Scale features for better convergence
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Fit multinomial logit model
+mnl_model = LogisticRegression(
+    multi_class='multinomial',  # This makes it a true multinomial logit
+    solver='lbfgs',            # Good solver for multinomial problems  
+    max_iter=1000,             # Ensure convergence
+    random_state=42            # Reproducibility
+)
+
+# Fit the model
+mnl_model.fit(X_scaled, y_numeric)
+
+# Check convergence
+converged = mnl_model.n_iter_ < mnl_model.max_iter
+print(f"Model converged: {converged} (iterations: {mnl_model.n_iter_})")
+
+# %% [markdown]
+# ### Model Results and Fit Statistics
+
+# %%
+# Calculate model fit statistics
+print("=== MODEL FIT STATISTICS ===")
+
+# Predictions
+y_pred = mnl_model.predict(X_scaled)
+y_pred_proba = mnl_model.predict_proba(X_scaled)
+
+# Accuracy (equivalent to hit rate)
+accuracy = np.mean(y_pred == y_numeric)
+print(f"Overall Accuracy: {accuracy:.3f}")
+
+# McFadden's R² approximation using log-likelihood
+# LL(β) = sum(log(P_chosen))
+log_likelihood = 0
+for i in range(len(y_numeric)):
+    chosen_prob = y_pred_proba[i, y_numeric[i]]
+    log_likelihood += np.log(max(chosen_prob, 1e-10))  # Avoid log(0)
+
+# Null model log-likelihood (equal probability model)
+n_alternatives = len(mode_names)
+null_log_likelihood = len(y_numeric) * np.log(1/n_alternatives)
+
+# McFadden's R²
+mcfadden_r2 = 1 - (log_likelihood / null_log_likelihood)
+print(f"Log-Likelihood: {log_likelihood:.2f}")
+print(f"Null Log-Likelihood: {null_log_likelihood:.2f}")
+print(f"McFadden's R²: {mcfadden_r2:.3f}")
+
+# %% [markdown]
+# ### Model Coefficients Analysis
+
+# %%
+# Display model coefficients
+print("\n=== MODEL COEFFICIENTS ===")
+
+# Get coefficients for each alternative 
+# In sklearn multinomial logit, coefficients are for all classes
+coef_df = pd.DataFrame(
+    mnl_model.coef_,
+    columns=all_features,
+    index=[f"{mode_names[i]}" for i in range(len(mode_names))]
+)
+
+print("Coefficients for each alternative:")
+print(coef_df.round(4))
+
+# Show relative coefficients (subtract car coefficients)
+print("\nCoefficients relative to car (base alternative):")
+car_coef = coef_df.loc['car']  # Get car coefficients 
+relative_coef_df = coef_df.copy()
+for mode in mode_names:
+    if mode != 'car':
+        relative_coef_df.loc[mode] = coef_df.loc[mode] - car_coef
+
+# Display only non-car alternatives for relative interpretation  
+relative_display = relative_coef_df.loc[['air', 'bus', 'train']].copy()
+relative_display.index = [f"{mode} (vs car)" for mode in ['air', 'bus', 'train']]
+print(relative_display.round(4))
+
+# Check signs of disutility variables (should be negative in relative terms)
+print("\n=== SIGN CHECK FOR DISUTILITY VARIABLES ===")
+disutility_vars = ['wait', 'travel', 'vcost', 'gcost']
+for var in disutility_vars:
+    var_coefs = relative_display[var].values  # Use relative coefficients
+    all_negative = all(coef <= 0 for coef in var_coefs)
+    avg_coef = np.mean(var_coefs)
+    print(f"{var:8s}: avg coefficient = {avg_coef:6.3f}, all negative = {all_negative}")
+
+# %% [markdown]
+# ### Prediction Results Summary
+
+# %%
+# Classification report
+print("\n=== CLASSIFICATION PERFORMANCE ===")
+class_report = classification_report(y_numeric, y_pred, 
+                                   target_names=mode_names, 
+                                   output_dict=True)
+
+# Convert to DataFrame for better display
+report_df = pd.DataFrame(class_report).transpose().round(3)
+print(report_df)
+
+# Confusion Matrix
+print("\n=== CONFUSION MATRIX ===")
+conf_matrix = confusion_matrix(y_numeric, y_pred)
+conf_df = pd.DataFrame(conf_matrix, 
+                      index=[f"Actual {mode}" for mode in mode_names],
+                      columns=[f"Pred {mode}" for mode in mode_names])
+print(conf_df)
+
+print("\n=== MODEL SUMMARY ===")
+print(f"✓ Convergence achieved: {converged}")  
+print(f"✓ McFadden's R²: {mcfadden_r2:.3f}")
+print(f"✓ Overall accuracy: {accuracy:.3f}")
+print(f"✓ Features included: {len(all_features)} (requirement: ≥8)")
+print("✓ Base alternative: Car (reference category)")
+print("✓ ASCs estimated: Air, Train, Bus (relative to Car)")
+
+# %% [markdown]
+# ## Q3.5 - Model Validation with Train/Test Split
+# 
+# Since the data is in long format (each individual has 4 rows), we need to split by individuals,
+# not by rows, to maintain the choice structure and avoid data leakage.
+
+# %% [markdown]
+# ### Train/Test Split by Individuals
+
+# %%
+print("=== TRAIN/TEST SPLIT SETUP ===")
+
+# Get unique individual IDs
+unique_individuals = df_clean['ids'].unique()
+print(f"Total individuals: {len(unique_individuals)}")
+
+# Split individuals into train/test (80/20 split)
+train_ids, test_ids = train_test_split(
+    unique_individuals, 
+    test_size=0.2, 
+    random_state=42,
+    stratify=None  # Can't easily stratify by choice in this format
+)
+
+print(f"Train individuals: {len(train_ids)} ({len(train_ids)/len(unique_individuals)*100:.1f}%)")
+print(f"Test individuals: {len(test_ids)} ({len(test_ids)/len(unique_individuals)*100:.1f}%)")
+
+# Create train and test datasets
+train_data = df_clean[df_clean['ids'].isin(train_ids)].copy()
+test_data = df_clean[df_clean['ids'].isin(test_ids)].copy()
+
+print(f"Train rows: {len(train_data)} ({len(train_data)/len(df_clean)*100:.1f}%)")
+print(f"Test rows: {len(test_data)} ({len(test_data)/len(df_clean)*100:.1f}%)")
+
+# Verify choice distribution in train/test
+print("\nChoice distribution in splits:")
+train_choices = train_data[train_data['choice'] == 1]['alts'].value_counts(normalize=True).sort_index()
+test_choices = test_data[test_data['choice'] == 1]['alts'].value_counts(normalize=True).sort_index()
+
+split_comparison = pd.DataFrame({
+    'Train (%)': (train_choices * 100).round(1),
+    'Test (%)': (test_choices * 100).round(1),
+    'Full Dataset (%)': (mode_shares * 100).round(1)
+})
+print(split_comparison)
+
+# %% [markdown]
+# ### Model Training on Train Set
+
+# %%
+print("\n=== TRAINING MODEL ON TRAIN SET ===")
+
+# Prepare train data
+X_train = train_data[all_features].values
+y_train_numeric = np.array([mode_mapping[mode] for mode in train_data['alts'].values])
+
+# Scale features
+scaler_train = StandardScaler()
+X_train_scaled = scaler_train.fit_transform(X_train)
+
+# Train model
+mnl_train_model = LogisticRegression(
+    multi_class='multinomial',
+    solver='lbfgs',
+    max_iter=1000,
+    random_state=42
+)
+
+mnl_train_model.fit(X_train_scaled, y_train_numeric)
+
+# Check convergence
+train_converged = mnl_train_model.n_iter_ < mnl_train_model.max_iter
+print(f"Training converged: {train_converged} (iterations: {mnl_train_model.n_iter_})")
+
+# Train set performance
+y_train_pred = mnl_train_model.predict(X_train_scaled)
+train_accuracy = np.mean(y_train_pred == y_train_numeric)
+print(f"Training accuracy: {train_accuracy:.3f}")
+
+# %% [markdown]
+# ### Model Evaluation on Test Set
+
+# %%
+print("\n=== EVALUATING MODEL ON TEST SET ===")
+
+# Prepare test data (use same scaler as training)
+X_test = test_data[all_features].values
+y_test_numeric = np.array([mode_mapping[mode] for mode in test_data['alts'].values])
+X_test_scaled = scaler_train.transform(X_test)  # Important: use training scaler
+
+# Test set predictions
+y_test_pred = mnl_train_model.predict(X_test_scaled)
+y_test_pred_proba = mnl_train_model.predict_proba(X_test_scaled)
+
+# Test set performance
+test_accuracy = np.mean(y_test_pred == y_test_numeric)
+print(f"Test accuracy: {test_accuracy:.3f}")
+
+# Calculate test set McFadden's R²
+test_log_likelihood = 0
+for i in range(len(y_test_numeric)):
+    chosen_prob = y_test_pred_proba[i, y_test_numeric[i]]
+    test_log_likelihood += np.log(max(chosen_prob, 1e-10))
+
+test_null_log_likelihood = len(y_test_numeric) * np.log(1/n_alternatives)
+test_mcfadden_r2 = 1 - (test_log_likelihood / test_null_log_likelihood)
+
+print(f"Test McFadden's R²: {test_mcfadden_r2:.3f}")
+
+# %% [markdown]
+# ### Performance Comparison and Validation Results
+
+# %%
+print("=== TRAIN/TEST PERFORMANCE COMPARISON ===")
+
+# Performance comparison table
+performance_comparison = pd.DataFrame({
+    'Metric': ['Accuracy', "McFadden's R²", 'Log-Likelihood'],
+    'Full Dataset': [accuracy, mcfadden_r2, log_likelihood],
+    'Train Set': [train_accuracy, 'N/A', 'N/A'],
+    'Test Set': [test_accuracy, test_mcfadden_r2, test_log_likelihood]
+})
+
+print(performance_comparison)
+
+# Detailed test set classification report
+print("\n=== TEST SET CLASSIFICATION REPORT ===")
+test_class_report = classification_report(y_test_numeric, y_test_pred, 
+                                         target_names=mode_names, 
+                                         output_dict=True)
+
+test_report_df = pd.DataFrame(test_class_report).transpose().round(3)
+print(test_report_df)
+
+# Test set confusion matrix
+print("\n=== TEST SET CONFUSION MATRIX ===")
+test_conf_matrix = confusion_matrix(y_test_numeric, y_test_pred)
+test_conf_df = pd.DataFrame(test_conf_matrix, 
+                           index=[f"Actual {mode}" for mode in mode_names],
+                           columns=[f"Pred {mode}" for mode in mode_names])
+print(test_conf_df)
+
+# Model validation summary
+overfitting_check = abs(train_accuracy - test_accuracy) < 0.05
+print("\n=== MODEL VALIDATION SUMMARY ===")
+print("✓ Proper individual-based train/test split applied")
+print(f"✓ Training accuracy: {train_accuracy:.3f}")
+print(f"✓ Test accuracy: {test_accuracy:.3f}")
+print(f"✓ Accuracy difference: {abs(train_accuracy - test_accuracy):.3f}")
+print(f"✓ Overfitting check (diff < 0.05): {overfitting_check}")
+print(f"✓ Test set McFadden's R²: {test_mcfadden_r2:.3f}")
+print(f"✓ Model generalizes well: {test_accuracy > 0.25}")  # Better than random (25%)
