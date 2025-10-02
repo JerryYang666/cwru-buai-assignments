@@ -27,21 +27,20 @@ random.seed(42)
 # %%
 # Load the Amazon Musical dataset
 df = pd.read_csv('data/Amazon_Musical.csv')
-print(f"Dataset shape: {df.shape}")
+print(f"Original dataset shape: {df.shape}")
+
+# Sample 1% of the dataset for faster processing (especially for lemmatization in Q5)
+df = df.sample(frac=0.01, random_state=42).reset_index(drop=True)
+print(f"Sampled dataset shape (1%): {df.shape}")
+
 print("\nColumn names:")
 print(df.columns.tolist())
 print("\nFirst few rows of review_body:")
 print(df['review_body'].head())
 
 # %% [markdown]
-# ## Q1 — Keras Tokenizer (1 point)
+# ## Q1 — Keras Tokenizer
 # 
-# **Task:**
-# - Import `text_to_word_sequence` from `tensorflow.keras.preprocessing.text`
-# - Convert `review_body` column to string type using `.astype(str)`
-# - Apply `text_to_word_sequence` to each row of `review_body`
-# - Store result in new column `token_keras`
-# - Preview first 5 rows
 
 # %%
 
@@ -62,19 +61,8 @@ for i in range(5):
     print("-"*80)
 
 # %% [markdown]
-# ## Q2 — Regex Tokenizer Version 1 (1 point)
+# ## Q2 — Regex Tokenizer Version 1
 # 
-# **Task:**
-# - Import the built-in `re` module for regular expressions
-# - Define a compiled regex pattern: `r"[A-Za-z]+"`
-#   - Matches one or more English letters (A–Z or a–z)
-#   - Numbers, punctuation, emojis, and symbols are excluded
-#   - Hyphenated words (e.g., cost-effective) will be split (cost, effective)
-#   - No lowercasing or other normalization performed here
-# - Ensure `review_body` is treated as a string: `.astype(str)`
-# - Apply `pattern.findall(x)` to each row of `review_body` with `.apply(...)`
-# - Save the result to a new column named `token_regex_ver1`
-# - Preview by printing `review_body` and `token_regex_ver1` for the first 5 rows
 
 # %%
 # Define compiled regex pattern to match one or more English letters
@@ -97,18 +85,8 @@ for i in range(5):
     print("-"*80)
 
 # %% [markdown]
-# ## Q3 — Regex Tokenizer Version 2 (1 point)
+# ## Q3 — Regex Tokenizer Version 2
 # 
-# **Task:**
-# - Define a compiled regex pattern: `r"\w+"`, name the object `pattern2`
-#   - Matches one or more "word characters" (letters A–Z/a–z, digits 0–9, underscore `_`)
-#   - Punctuation, emojis, and symbols are excluded
-#   - Hyphenated words will be split
-#   - No lowercasing or normalization performed here
-# - Ensure `review_body` is treated as a string: `.astype(str)`
-# - Apply `pattern2.findall(x)` to each row of `review_body` with `.apply(...)`
-# - Save the result to a new column named `token_regex_ver2`
-# - Preview by printing `review_body` and `token_regex_ver2` for the first 5 rows
 
 # %%
 # Define compiled regex pattern to match one or more word characters
@@ -131,22 +109,8 @@ for i in range(5):
     print("-"*80)
 
 # %% [markdown]
-# ## Q4 — Regex Tokenizer Version 3 & Removing Some Stop Words (2 points)
+# ## Q4 — Regex Tokenizer Version 3 & Removing Some Stop Words
 # 
-# **Task:**
-# - Define a stoplist as a Python set named **STOPLIST**:
-#   `{"the", "a", "an", "and", "or", "to", "of", "in", "for", "on", "br"}`
-# - Define a regex pattern object named `pattern3`:
-#   `pattern3 = re.compile(r"[A-Za-z_']+")`
-#   - Matches sequences of letters, underscores, or apostrophes
-#   - Allows simple handling of contractions like *don't*
-#   - Numbers and punctuation (other than `'` and `_`) excluded
-# - Ensure `review_body` is treated as string: `.astype(str)`
-# - Convert `review_body` to lowercase: `.str.lower()`
-# - Extract tokens with `pattern3.findall(x)`
-# - Remove any tokens found in the stoplist (`if w not in STOPLIST`)
-# - Save results to a new column: `token_regex_ver3`
-# - Preview by printing both `review_body` and `token_regex_ver3` for the first 5 rows
 
 # %%
 # Define stoplist as a Python set
@@ -174,23 +138,8 @@ for i in range(5):
     print("-"*80)
 
 # %% [markdown]
-# ## Q5 — Lemmatizer for Regex Version 2 (2 points)
+# ## Q5 — Lemmatizer for Regex Version 2
 # 
-# **Task:**
-# - Import required libraries: `spaCy` and `nltk`
-# - Download the NLTK stopwords list: `nltk.download('stopwords')`
-# - Load English stopwords from NLTK into a Python set `stop_words`
-# - Load the spaCy English model: `en_core_web_sm` → variable `nlp`
-# - Define function **`lemmatize_tokens`** that:
-#   1. Takes a list of tokens as input
-#   2. Joins them into a string for spaCy to process
-#   3. Creates a spaCy `doc` object
-#   4. Extracts each token's lemma (base form)
-#   5. Converts lemma to lowercase
-#   6. Keeps only alphabetic tokens (`token.is_alpha`)
-#   7. Removes tokens found in `stop_words`
-# - Apply `lemmatize_tokens` to the column `token_regex_ver2` to produce a new column `lemmas`
-# - Preview by printing `review_body` and `lemmas` for the first 5 rows
 
 # %%
 # Download NLTK stopwords
@@ -234,4 +183,110 @@ for i in range(5):
     print(f"\n--- Row {i} ---")
     print(f"Original review_body:\n{df['review_body'].iloc[i]}")
     print(f"\nLemmatized (lemmas):\n{df['lemmas'].iloc[i]}")
+    print("-"*80)
+
+# %% [markdown]
+# ## Q6 — Suggestion of Your Own Tokenizer
+# 
+# **My Approach: Sentiment-Aware Lemmatization Pipeline for Amazon Reviews**
+# 
+# ### Explanation:
+# 
+# For Amazon review analysis, I propose a comprehensive tokenization pipeline that combines:
+# 1. **Regex tokenization with contraction handling** (`[A-Za-z']+` pattern)
+# 2. **Lowercase normalization** for consistency
+# 3. **Lemmatization** to reduce words to base forms
+# 4. **Sentiment-aware stopword removal** - preserves critical sentiment modifiers
+# 5. **Minimum token length filtering** (≥2 characters) to remove noise
+# 6. **Alphabetic-only filtering** to remove remaining noise
+# 
+# ### Why This Approach is Appropriate for Amazon Reviews:
+# 
+# 1. **Sentiment Analysis Ready**: Lemmatization normalizes variations like "loved/loving/loves" → "love",
+#    making it easier to identify sentiment patterns across reviews.
+# 
+# 2. **Handles Contractions**: The regex pattern `[A-Za-z']+` preserves contractions like "don't", "can't",
+#    which are common in informal review text and carry important sentiment information.
+# 
+# 3. **Preserves Sentiment Modifiers**: Unlike standard stopword removal, this keeps important words
+#    like "not", "never", "very", "really", "too" that are crucial for sentiment analysis.
+#    E.g., "not good" vs "good" have opposite meanings!
+# 
+# 4. **Reduces Vocabulary Size**: Lemmatization significantly reduces vocabulary while preserving meaning,
+#    which is crucial for machine learning models and topic analysis.
+# 
+# 5. **Removes Ultra-Short Tokens**: Filtering tokens with length < 2 removes artifacts like standalone
+#    apostrophes or single characters that survived regex, improving data quality.
+# 
+# 6. **Focuses on Content Words**: By removing most stopwords (while keeping sentiment-critical ones),
+#    we emphasize product-specific terms and quality descriptors most relevant for review analysis.
+# 
+# 7. **Noise Reduction**: Filtering out numbers and special characters removes rating artifacts
+#    (e.g., "5/5", "10/10") that don't add semantic value when already captured in structured fields.
+# 
+# ### Differences from Previous Methods:
+# - Unlike Q3 (regex ver2), this excludes numbers which are noise in sentiment analysis
+# - Unlike Q4 (regex ver3), this applies lemmatization for better normalization
+# - Unlike Q5, this uses a contraction-friendly regex AND preserves sentiment-critical stopwords
+# - **NEW**: Adds sentiment-aware stopword filtering and minimum length requirement
+# - **NEW**: Single integrated pipeline optimized specifically for sentiment analysis tasks
+
+# %%
+# Define sentiment-critical words to preserve (important for review sentiment analysis)
+SENTIMENT_WORDS = {
+    'not', 'no', 'never', 'neither', 'nor', 'nobody', 'nothing', 'nowhere',
+    'very', 'really', 'extremely', 'absolutely', 'totally', 'completely',
+    'too', 'quite', 'rather', 'highly', 'barely', 'hardly', 'scarcely'
+}
+
+# Define custom tokenization function for Amazon reviews
+def tokenize_amazon_review(text):
+    """
+    Custom tokenization pipeline optimized for Amazon review sentiment analysis.
+    
+    Steps:
+    1. Convert to lowercase
+    2. Extract tokens using regex pattern that preserves contractions
+    3. Apply lemmatization via spaCy
+    4. Filter: keep only alphabetic tokens
+    5. Remove stopwords BUT preserve sentiment-critical words
+    6. Remove tokens with length < 2 characters
+    
+    Returns: List of cleaned, lemmatized tokens
+    """
+    # Convert to string and lowercase
+    text = str(text).lower()
+    
+    # Extract tokens using regex (letters and apostrophes)
+    pattern_custom = re.compile(r"[a-z']+")
+    tokens = pattern_custom.findall(text)
+    
+    # Join tokens for spaCy processing
+    text_for_spacy = ' '.join(tokens)
+    
+    # Apply lemmatization
+    doc = nlp(text_for_spacy)
+    
+    # Extract lemmas with sentiment-aware filtering
+    cleaned_tokens = [
+        token.lemma_.lower() 
+        for token in doc 
+        if token.is_alpha  # Keep only alphabetic tokens
+        and len(token.lemma_) >= 2  # Minimum length requirement
+        and (token.lemma_.lower() not in stop_words or token.lemma_.lower() in SENTIMENT_WORDS)  # Remove stopwords EXCEPT sentiment-critical ones
+    ]
+    
+    return cleaned_tokens
+
+# Apply custom tokenizer to review_body
+df['token_custom'] = df['review_body'].apply(tokenize_amazon_review)
+
+# Preview the results for the first 5 rows
+print("="*80)
+print("Q6 — Custom Tokenizer for Amazon Reviews Results")
+print("="*80)
+for i in range(5):
+    print(f"\n--- Row {i} ---")
+    print(f"Original review_body:\n{df['review_body'].iloc[i]}")
+    print(f"\nCustom Tokenized (token_custom):\n{df['token_custom'].iloc[i]}")
     print("-"*80)
