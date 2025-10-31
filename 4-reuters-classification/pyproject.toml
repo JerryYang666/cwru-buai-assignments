@@ -1,0 +1,18 @@
+[project]
+name = "4-reuters-classification"
+version = "0.1.0"
+description = "Neural network model for Reuters newswire classification into 46 topics"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.10.6",
+    "numpy>=1.26.4",
+    "pandas>=2.3.2",
+    "seaborn>=0.13.2",
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.30.1",
+    "jupytext>=1.17.3",
+]
