@@ -36,7 +36,7 @@ import spacy
 # %% id="de31d834"
 # Load the dataset
 # Read the CSV file named 'Amazon Musical.csv' into a pandas DataFrame called df
-df = pd.read_csv('Amazon Musical.csv')
+df = pd.read_csv('data/Amazon_Musical.csv')
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="oelDbiLfGgvb" outputId="a714a823-9f6f-4171-c9be-cda09bb05f0a"
 # Make sure to use the entire dataset for your analysis
