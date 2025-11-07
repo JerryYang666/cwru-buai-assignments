@@ -38,6 +38,10 @@ import spacy
 # Read the CSV file named 'Amazon Musical.csv' into a pandas DataFrame called df
 df = pd.read_csv('data/Amazon_Musical.csv')
 
+# Sample 1% of the dataset for computational efficiency
+df = df.sample(frac=0.01, random_state=42).reset_index(drop=True)
+print(f"Working with {len(df)} samples (1% of the original dataset)")
+
 # %% colab={"base_uri": "https://localhost:8080/"} id="oelDbiLfGgvb" outputId="a714a823-9f6f-4171-c9be-cda09bb05f0a"
 # Make sure to use the entire dataset for your analysis
 # Please use the HPC for running this code
@@ -46,7 +50,7 @@ df.shape
 # %% id="tYNxGKIi6tpv"
 # Load the English NLP model from spaCy
 # This model provides tokenization, POS tagging, and named entity recognition
-nlp = spacy.load("en_core_web_sm")
+nlp = spacy.load("en_core_web_md")
 
 # %% id="IqPxz_P56uzX"
 # Define a function to process text data using spaCy with parallel processing
@@ -136,6 +140,28 @@ df["lemmas_text"] = df["lemmas"].apply(" ".join)
 # - Assign the result to a variable named top_trigrams.
 
 # %%
+# Q1.1: Build the TF-IDF vectorizer (0.5 pt)
+print("Building TF-IDF vectorizer with up to trigrams...")
+
+vec_list_trigram = TfidfVectorizer(
+    analyzer="word",
+    lowercase=False,
+    ngram_range=(1, 3),
+    sublinear_tf=True
+)
+
+print("Fitting and transforming the text data...")
+X_list_123g = vec_list_trigram.fit_transform(df["lemmas_text"])
+
+print(f"TF-IDF matrix shape: {X_list_123g.shape}")
+print(f"Number of documents: {X_list_123g.shape[0]}")
+print(f"Number of features (terms): {X_list_123g.shape[1]}")
+
+# %%
+# Q1.2: Display top trigrams (0.5 pt)
+print("\nTop 10 terms with highest TF-IDF scores:")
+top_trigrams = get_top_terms(X_list_123g, vec_list_trigram, top_n=10)
+print(top_trigrams)
 
 # %% [markdown]
 # Below is a shared NMF skeleton code that we will use throughout the assignment.
