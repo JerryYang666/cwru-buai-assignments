@@ -329,8 +329,8 @@ for k in range(K):
 #
 # Based on the top keywords, I would name the topics as follows:
 #
-# - **Topic 0**: [Name based on keywords - to be filled after running]
-# - **Topic 1**: [Name based on keywords - to be filled after running]
+# - **Topic 0**: The product works well.
+# - **Topic 1**: The product has good price and quality.
 
 # %% [markdown]
 # ## Q3 (1 pt) — Increase topic count (K = 4)
@@ -355,6 +355,58 @@ for k in range(K):
 #
 # Use the code template above and only change the values needed for this question.
 
+# %%
+# Q3: Increase topic count (K = 4)
+print("=" * 60)
+print("Q3: Training MiniBatchNMF with K=4 topics")
+print("=" * 60)
+
+# Set up aliases (as shown in the template)
+X = X_list_123g
+vocab = vec_list_trigram.get_feature_names_out()
+
+# Model parameters - ONLY change K from 2 to 4
+K = 4
+BATCH = 512
+RANDOM_SEED = 42
+
+# Initialize and fit MiniBatchNMF
+nmf = MiniBatchNMF(
+    n_components=K,
+    init="nndsvda",
+    random_state=RANDOM_SEED,
+    max_iter=300,
+    batch_size=BATCH,
+)
+
+print(f"\nFitting MiniBatchNMF with {K} topics...")
+W = nmf.fit_transform(X)
+H = nmf.components_
+
+# Print shapes
+print("\nMatrix shapes:")
+print(f"W shape: {W.shape}")
+print(f"H shape: {H.shape}")
+
+# Print top 10 terms for each topic
+print("\nTop 10 terms for each topic:")
+print("-" * 60)
+TOP_N = 10
+for k in range(K):
+    top_idx = H[k].argsort()[-TOP_N:][::-1]
+    top_words = [vocab[i] for i in top_idx]
+    print(f"Topic {k}: {', '.join(top_words)}")
+
+# %% [markdown]
+# ### Q3: Topic Names
+#
+# Based on the top keywords, I would name the topics as follows:
+#
+# - **Topic 0**: Great Value Products - Products that work great and offer good price
+# - **Topic 1**: Quality Strings and Accessories - Good quality products with focus on instrument strings
+# - **Topic 2**: Products Working as Advertised - Items that work perfectly and meet expectations
+# - **Topic 3**: Positive Musical Instrument Experiences - Love and excellent experiences with guitars and instruments
+
 # %% [markdown]
 # ## Q4 (1 pt) — Same K=4 but different initialization
 #
@@ -377,6 +429,60 @@ for k in range(K):
 # 4. (Markdown cell) For each topic, look at the keywords and create your own topic name
 #
 # Use the code template above and only change the values needed for this question.
+
+# %%
+# Q4: Same K=4 but different initialization
+print("=" * 60)
+print("Q4: Training MiniBatchNMF with K=4 topics (random initialization)")
+print("=" * 60)
+
+# Set up aliases (as shown in the template)
+X = X_list_123g
+vocab = vec_list_trigram.get_feature_names_out()
+
+# Model parameters - ONLY change init from "nndsvda" to "random"
+K = 4
+BATCH = 512
+RANDOM_SEED = 42
+
+# Initialize and fit MiniBatchNMF
+nmf = MiniBatchNMF(
+    n_components=K,
+    init="random",  # CHANGED from "nndsvda"
+    random_state=RANDOM_SEED,
+    max_iter=300,
+    batch_size=BATCH,
+)
+
+print(f"\nFitting MiniBatchNMF with {K} topics (random init)...")
+W = nmf.fit_transform(X)
+H = nmf.components_
+
+# Print shapes
+print("\nMatrix shapes:")
+print(f"W shape: {W.shape}")
+print(f"H shape: {H.shape}")
+
+# Print top 10 terms for each topic
+print("\nTop 10 terms for each topic:")
+print("-" * 60)
+TOP_N = 10
+for k in range(K):
+    top_idx = H[k].argsort()[-TOP_N:][::-1]
+    top_words = [vocab[i] for i in top_idx]
+    print(f"Topic {k}: {', '.join(top_words)}")
+
+# %% [markdown]
+# ### Q4: Topic Names
+#
+# Based on the top keywords, I would name the topics as follows:
+#
+# - **Topic 0**: Incoherent/Mixed - Random phrases (heavy string, audio enthusiast, box surprised loud, etc.)
+# - **Topic 1**: Incoherent/Mixed - Scattered terms (use, depend arrange, new squier, overdrive, etc.)
+# - **Topic 2**: Incoherent/Mixed - Unrelated phrases (turn volume, learn mix, laugh function, etc.)
+# - **Topic 3**: Somewhat General Use - Contains "use" and "great" but mixed with odd phrases
+#
+# **Note**: Random initialization produced very incoherent topics with multi-word phrases stuck together, making interpretation difficult.
 
 # %% [markdown]
 # ## Q5 (1 pt) — Same K=4, add change convergence tolerance (early stopping)
@@ -401,6 +507,64 @@ for k in range(K):
 #
 # Use the code template above and only change the values needed for this question.
 
+# %%
+# Q5: Same K=4, add early stopping (convergence tolerance)
+print("=" * 60)
+print("Q5: Training MiniBatchNMF with K=4 topics (with early stopping)")
+print("=" * 60)
+
+# Set up aliases (as shown in the template)
+X = X_list_123g
+vocab = vec_list_trigram.get_feature_names_out()
+
+# Model parameters - Same as Q4 but ADD tol parameter
+K = 4
+BATCH = 512
+RANDOM_SEED = 42
+
+# Initialize and fit MiniBatchNMF
+nmf = MiniBatchNMF(
+    n_components=K,
+    init="random",
+    random_state=RANDOM_SEED,
+    max_iter=300,
+    batch_size=BATCH,
+    tol=1e-3,  # ADDED: early stopping with looser tolerance
+)
+
+print(f"\nFitting MiniBatchNMF with {K} topics (tol=1e-3)...")
+W = nmf.fit_transform(X)
+H = nmf.components_
+
+# Print shapes
+print("\nMatrix shapes:")
+print(f"W shape: {W.shape}")
+print(f"H shape: {H.shape}")
+
+# Print convergence info
+print(f"Number of iterations: {nmf.n_iter_}")
+
+# Print top 10 terms for each topic
+print("\nTop 10 terms for each topic:")
+print("-" * 60)
+TOP_N = 10
+for k in range(K):
+    top_idx = H[k].argsort()[-TOP_N:][::-1]
+    top_words = [vocab[i] for i in top_idx]
+    print(f"Topic {k}: {', '.join(top_words)}")
+
+# %% [markdown]
+# ### Q5: Topic Names
+#
+# Based on the top keywords, I would name the topics as follows:
+#
+# - **Topic 0**: Incoherent/Mixed - Random phrases (heavy string, audio enthusiast, box surprised loud, etc.)
+# - **Topic 1**: Incoherent/Mixed - Scattered terms (depend arrange, new squier, overdrive, etc.)
+# - **Topic 2**: Incoherent/Mixed - Unrelated phrases (turn volume, learn mix, sound tone recording, etc.)
+# - **Topic 3**: Somewhat Repair/Guitar Related - Mix of phrases including "guitar grandson", "great repair"
+#
+# **Note**: Model converged too quickly (only 1 iteration) due to loose tolerance (tol=1e-3), resulting in poorly formed topics similar to Q4.
+
 # %% [markdown]
 # ## Q6 (1 pt) — Same K=4, change batch size & iterations
 #
@@ -423,6 +587,63 @@ for k in range(K):
 # 4. (Markdown cell) For each topic, look at the keywords and create your own topic name
 #
 # Use the code template above and only change the values needed for this question.
+
+# %%
+# Q6: Same K=4, change batch size & iterations
+print("=" * 60)
+print("Q6: Training MiniBatchNMF with K=4 topics (smaller batch, more iterations)")
+print("=" * 60)
+
+# Set up aliases (as shown in the template)
+X = X_list_123g
+vocab = vec_list_trigram.get_feature_names_out()
+
+# Model parameters - Change batch_size and max_iter, init back to "nndsvda"
+K = 4
+BATCH = 128  # CHANGED from 512 to 128
+RANDOM_SEED = 42
+
+# Initialize and fit MiniBatchNMF
+nmf = MiniBatchNMF(
+    n_components=K,
+    init="nndsvda",  # Back to "nndsvda"
+    random_state=RANDOM_SEED,
+    max_iter=350,  # CHANGED from 300 to 350
+    batch_size=BATCH,
+)
+
+print(f"\nFitting MiniBatchNMF with {K} topics (batch_size={BATCH}, max_iter=350)...")
+W = nmf.fit_transform(X)
+H = nmf.components_
+
+# Print shapes
+print("\nMatrix shapes:")
+print(f"W shape: {W.shape}")
+print(f"H shape: {H.shape}")
+
+# Print convergence info
+print(f"Number of iterations: {nmf.n_iter_}")
+
+# Print top 10 terms for each topic
+print("\nTop 10 terms for each topic:")
+print("-" * 60)
+TOP_N = 10
+for k in range(K):
+    top_idx = H[k].argsort()[-TOP_N:][::-1]
+    top_words = [vocab[i] for i in top_idx]
+    print(f"Topic {k}: {', '.join(top_words)}")
+
+# %% [markdown]
+# ### Q6: Topic Names
+#
+# Based on the top keywords, I would name the topics as follows:
+#
+# - **Topic 0**: General Positive Reviews - Products that work great, good quality, and loved by users
+# - **Topic 1**: Quality and Value Focus - Good price, quality products, especially strings and accessories
+# - **Topic 2**: Functional Performance - Products working perfectly, fine, and as advertised
+# - **Topic 3**: Musical Instrument Satisfaction - Love, perfect sound, excellent guitar experiences
+#
+# **Note**: Despite only 1 iteration, nndsvda initialization produced coherent, interpretable topics similar to Q3.
 
 # %% [markdown]
 # ## Q7 (3 pt) — Same K=4, change batch size & iterations
