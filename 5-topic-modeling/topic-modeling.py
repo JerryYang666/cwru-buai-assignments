@@ -79,13 +79,16 @@ print(df[["review_body", "spacy_tokens"]].head(2))
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 # %% id="_E2O5DrG63NH"
+# Use spaCy's built-in stop words
+from spacy.lang.en.stop_words import STOP_WORDS
+
 # Extract and clean lemma tokens from the spaCy results
-# Keep only alphabetic lemmas and convert them to lowercase
+# Keep only alphabetic lemmas, remove stop words, and convert them to lowercase
 df["lemmas"] = df["spacy_tokens"].apply(
     lambda rows: [
         lemma.lower().strip()
         for (_, _, _, lemma) in rows
-        if lemma and lemma.strip() and lemma.isalpha()
+        if lemma and lemma.strip() and lemma.isalpha() and lemma.lower() not in STOP_WORDS
     ]
 )
 
@@ -163,6 +166,52 @@ print("\nTop 10 terms with highest TF-IDF scores:")
 top_trigrams = get_top_terms(X_list_123g, vec_list_trigram, top_n=10)
 print(top_trigrams)
 
+# %%
+# Save preprocessed data and TF-IDF results for quick restart
+import pickle
+from scipy.sparse import save_npz
+
+print("Saving preprocessed data...")
+
+# Save the dataframe with all processed columns
+df.to_pickle('data/preprocessed_df.pkl')
+print("✓ Saved preprocessed DataFrame to 'data/preprocessed_df.pkl'")
+
+# Save the TF-IDF matrix (sparse matrix)
+save_npz('data/X_list_123g.npz', X_list_123g)
+print("✓ Saved TF-IDF matrix to 'data/X_list_123g.npz'")
+
+# Save the vectorizer
+with open('data/vec_list_trigram.pkl', 'wb') as f:
+    pickle.dump(vec_list_trigram, f)
+print("✓ Saved vectorizer to 'data/vec_list_trigram.pkl'")
+
+print("\n✓ All preprocessing results saved successfully!")
+print("  You can now start from Q2 by loading these files.")
+
+# %%
+# Load preprocessed data (use this cell to skip preprocessing and start from Q2)
+# Uncomment the lines below when you want to load instead of preprocessing
+import pickle
+from scipy.sparse import load_npz
+
+print("Loading preprocessed data...")
+
+# Load the dataframe
+df = pd.read_pickle('data/preprocessed_df.pkl')
+print(f"✓ Loaded DataFrame with {len(df)} samples")
+
+# Load the TF-IDF matrix
+X_list_123g = load_npz('data/X_list_123g.npz')
+print(f"✓ Loaded TF-IDF matrix with shape {X_list_123g.shape}")
+
+# Load the vectorizer
+with open('data/vec_list_trigram.pkl', 'rb') as f:
+    vec_list_trigram = pickle.load(f)
+print(f"✓ Loaded vectorizer with {len(vec_list_trigram.get_feature_names_out())} features")
+
+print("\n✓ All data loaded successfully! Ready to continue from Q2.")
+
 # %% [markdown]
 # Below is a shared NMF skeleton code that we will use throughout the assignment.
 # Please treat this as the base code and, for each question, only modify the parts that are explicitly requested in the instructions.
@@ -179,29 +228,29 @@ vocab = vec_list_trigram.get_feature_names_out()
 
 # %%
 #DO NOT RUN! This is an example code
-K = 10          
-BATCH = 512     
-RANDOM_SEED = 1
+# K = 10          
+# BATCH = 512     
+# RANDOM_SEED = 1
 
-nmf = MiniBatchNMF(
-    n_components=K,
-    init="nndsvda",
-    random_state=RANDOM_SEED,
-    max_iter=300,
-    batch_size=BATCH,
-)
+# nmf = MiniBatchNMF(
+#     n_components=K,
+#     init="nndsvda",
+#     random_state=RANDOM_SEED,
+#     max_iter=300,
+#     batch_size=BATCH,
+# )
 
-W = nmf.fit_transform(X)
-H = nmf.components_
+# W = nmf.fit_transform(X)
+# H = nmf.components_
 
-print("W shape:", W.shape)
-print("H shape:", H.shape)
+# print("W shape:", W.shape)
+# print("H shape:", H.shape)
 
-TOP_N = 10
-for k in range(K):
-    top_idx = H[k].argsort()[-TOP_N:][::-1]
-    top_words = [vocab[i] for i in top_idx]
-    print(f"Topic {k}: {', '.join(top_words)}")
+# TOP_N = 10
+# for k in range(K):
+#     top_idx = H[k].argsort()[-TOP_N:][::-1]
+#     top_words = [vocab[i] for i in top_idx]
+#     print(f"Topic {k}: {', '.join(top_words)}")
 
 # %% [markdown]
 # ## Q2 (1 pt) — Very coarse topics (K = 2 baseline)
@@ -232,6 +281,56 @@ for k in range(K):
 #
 # Use the code template above and only change the values needed for this question.
 #
+
+# %%
+# Q2: Very coarse topics (K = 2 baseline)
+print("=" * 60)
+print("Q2: Training MiniBatchNMF with K=2 topics")
+print("=" * 60)
+
+# Set up aliases (as shown in the template)
+X = X_list_123g
+vocab = vec_list_trigram.get_feature_names_out()
+
+# Model parameters
+K = 2
+BATCH = 512
+RANDOM_SEED = 42
+
+# Initialize and fit MiniBatchNMF
+nmf = MiniBatchNMF(
+    n_components=K,
+    init="nndsvda",
+    random_state=RANDOM_SEED,
+    max_iter=300,
+    batch_size=BATCH,
+)
+
+print(f"\nFitting MiniBatchNMF with {K} topics...")
+W = nmf.fit_transform(X)
+H = nmf.components_
+
+# Print shapes
+print("\nMatrix shapes:")
+print(f"W shape: {W.shape}")
+print(f"H shape: {H.shape}")
+
+# Print top 10 terms for each topic
+print("\nTop 10 terms for each topic:")
+print("-" * 60)
+TOP_N = 10
+for k in range(K):
+    top_idx = H[k].argsort()[-TOP_N:][::-1]
+    top_words = [vocab[i] for i in top_idx]
+    print(f"Topic {k}: {', '.join(top_words)}")
+
+# %% [markdown]
+# ### Q2: Topic Names
+#
+# Based on the top keywords, I would name the topics as follows:
+#
+# - **Topic 0**: [Name based on keywords - to be filled after running]
+# - **Topic 1**: [Name based on keywords - to be filled after running]
 
 # %% [markdown]
 # ## Q3 (1 pt) — Increase topic count (K = 4)
