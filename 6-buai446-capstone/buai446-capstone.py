@@ -13,7 +13,15 @@
 # ---
 
 # %% [markdown]
-# # BUAI446 Capstone Project: Hybrid Recommender System (Amazon Musical Instruments)
+# # BUAI446 Capstone Project: Recommender System Based on Online Reviews
+#   
+# **Dataset:** `Amazon_Musical.csv`  
+# Dataset Relative Path: `data/Amazon_Musical.csv`  
+# Group Members: Ruihuang Yang, Priyanshi Gupta  
+# CWRU NetIDs: rxy216, pxg398  
+# Due Date: 2025-12-02  
+
+# %% [markdown]
 # 
 # This notebook implements the full analytics plan for building a hybrid recommender system that combines collaborative filtering, content-based methods, and advanced NLP-driven features on top of Amazon Musical Instruments reviews. The workflow mirrors the project rubric:
 # 
@@ -25,7 +33,6 @@
 # 6. **Comprehensive evaluation (RMSE/MAE & ranking metrics)**
 # 7. **Business insights plus presentation-ready visualizations**
 # 
-# > ⚙️ **Runtime toggle** – The code uses only 1% of the dataset by default so that it runs quickly on a laptop. Set `SAMPLE_FRACTION = 1.0` before deploying to the full server dataset.
 
 # %% [markdown]
 # ## 1. Configuration & Setup
