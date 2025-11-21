@@ -291,3 +291,15 @@ Advanced NLP enables sophisticated chatbots capable of deeper understanding and 
 # **Summary**
 
 By focusing on these key areas—NLP, recommender systems, and chatbot development—students will be equipped to deliver a high-quality, end-to-end solution that meets all project objectives.
+
+---
+
+### Convert .py to .ipynb using
+```bash
+jupytext --to ipynb buai446-capstone.py
+```
+
+### Convert .ipynb to .py using
+```bash
+jupytext --to py buai446-capstone.ipynb
+```
