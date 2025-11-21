@@ -6,11 +6,19 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "en-core-web-md",
+    "gensim>=4.4.0",
     "matplotlib>=3.10.6",
+    "nltk>=3.9.2",
+    "numpy<2",
     "pandas>=2.3.2",
+    "pyldavis>=3.4.1",
     "scikit-learn>=1.7.2",
+    "scikit-surprise>=1.1.4",
     "seaborn>=0.13.2",
     "spacy>=3.8.8",
+    "textblob>=0.19.0",
+    "umap-learn>=0.5.9.post2",
+    "vadersentiment>=3.3.2",
 ]
 
 [dependency-groups]
