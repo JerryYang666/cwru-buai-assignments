@@ -662,8 +662,11 @@ if demo_user:
         .sort_values("star_rating", ascending=False)
         .head(10)
     )
+    product_metadata = product_lookup.reset_index()[["product_id", "product_title", "avg_rating", "rating_count"]]
+    history_details = user_history.merge(product_metadata, on="product_id", how="left")
+
     print("\nItems previously rated by this user:")
-    display(user_history)
+    display(history_details)
 
     recommendation_sets = {
         "Content-Based": recommend_content(demo_user, 5),
@@ -690,12 +693,21 @@ if demo_user:
         for pid in hybrid_scores_series.index
     ]
 
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.barh(hybrid_titles, hybrid_scores_series.values, color="#6C8CD5")
-    ax.set_title("Hybrid recommender scores for demo user")
-    ax.set_xlabel("Blended relevance score")
+    fig, axes = plt.subplots(2, 1, figsize=(10, 8), sharex=False)
+
+    history_top = history_details.head(5)
+    axes[0].barh(history_top["product_title"], history_top["star_rating"], color="#4E79A7")
+    axes[0].invert_yaxis()
+    axes[0].set_title("What the user purchased & rated")
+    axes[0].set_xlabel("Star rating (1-5)")
+
+    axes[1].barh(hybrid_titles, hybrid_scores_series.values, color="#F28E2B")
+    axes[1].invert_yaxis()
+    axes[1].set_title("What the hybrid model recommends next")
+    axes[1].set_xlabel("Hybrid relevance score")
+
     plt.tight_layout()
-    save_figure(fig, f"hybrid_recs_user_{demo_user}.png")
+    save_figure(fig, f"user_{demo_user}_history_vs_hybrid.png")
     plt.show()
 
 # %% [markdown]
