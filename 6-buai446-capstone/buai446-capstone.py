@@ -176,7 +176,7 @@ display(missing_counts.head(10))
 # A handful of high-level plots to understand distributions and category coverage.
 
 # %%
-fig, axes = plt.subplots(1, 3, figsize=(20, 5))
+fig, axes = plt.subplots(1, 2, figsize=(16, 5))
 
 sns.countplot(data=raw_df, x="star_rating", palette="viridis", ax=axes[0])
 axes[0].set_title("Rating Distribution")
@@ -185,16 +185,7 @@ axes[0].set_xlabel("Star Rating")
 review_lengths = raw_df["review_body"].fillna("").str.split().map(len)
 sns.histplot(review_lengths, bins=30, kde=True, ax=axes[1])
 axes[1].set_title("Review Length (words)")
-
-top_categories = (
-    raw_df["product_category"]
-    .fillna("Unknown")
-    .value_counts()
-    .head(10)
-    .sort_values(ascending=True)
-)
-top_categories.plot(kind="barh", ax=axes[2], color="#2E86AB")
-axes[2].set_title("Top Product Categories")
+axes[1].set_xlabel("Tokens per Review")
 
 plt.tight_layout()
 save_figure(fig, "eda_overview.png")
@@ -354,6 +345,7 @@ product_profiles = (
 product_profiles["tokens"] = product_profiles["product_id"].map(product_tokens_series)
 product_profiles["combined_text"] = product_profiles["tokens"].apply(lambda toks: " ".join(toks))
 product_profiles["combined_text"] = product_profiles["combined_text"].fillna("")
+product_lookup = product_profiles.set_index("product_id")
 
 print(f"Products prepared for NLP: {len(product_profiles)}")
 
@@ -516,6 +508,18 @@ def recommend_popular(top_n: int = TOP_K) -> List[str]:
     return popularity_ranking[:top_n]
 
 
+def select_demo_user(min_history: int = 3) -> str | None:
+    """Pick a user with enough history to showcase recommendations."""
+    candidates = [
+        user_id for user_id, items in train_user_hist.items() if len(items) >= min_history
+    ]
+    if not candidates:
+        candidates = list(train_user_hist.keys())
+    if not candidates:
+        return None
+    return random.choice(candidates)
+
+
 def content_scores_for_user(user_id: str) -> Dict[str, float]:
     history = train_df[train_df["customer_id"] == user_id]
     if history.empty:
@@ -650,27 +654,56 @@ display(ranking_eval)
 # ## 12. Example Recommendations
 
 # %%
-sample_user = random.choice(eval_users) if eval_users else None
-if sample_user:
-    print(f"Sample user: {sample_user}")
-    print("\nPreviously purchased (train set):")
-    display(train_df[train_df["customer_id"] == sample_user].head())
-
-    print("\nHybrid recommendations:")
-    hybrid_recs = recommend_hybrid(sample_user, 5)
-    display(
-        product_profiles[product_profiles["product_id"].isin(hybrid_recs)][
-            ["product_id", "product_title", "avg_rating", "rating_count"]
-        ]
+demo_user = select_demo_user()
+if demo_user:
+    print(f"Demo user selected for walkthrough: {demo_user}")
+    user_history = (
+        train_df[train_df["customer_id"] == demo_user]
+        .sort_values("star_rating", ascending=False)
+        .head(10)
     )
+    print("\nItems previously rated by this user:")
+    display(user_history)
+
+    recommendation_sets = {
+        "Content-Based": recommend_content(demo_user, 5),
+        "SVD CF": recommend_svd(demo_user, 5),
+        "Hybrid": recommend_hybrid(demo_user, 5),
+    }
+
+    for label, rec_ids in recommendation_sets.items():
+        print(f"\nTop {len(rec_ids)} {label} recommendations:")
+        rec_df = (
+            product_lookup.loc[[pid for pid in rec_ids if pid in product_lookup.index], :]
+            .reset_index()
+            .rename(columns={"index": "product_id"})
+        )
+        display(rec_df[["product_title", "avg_rating", "rating_count"]])
+
+    hybrid_score_map = hybrid_scores(demo_user)
+    hybrid_recs = recommendation_sets["Hybrid"]
+    hybrid_scores_series = pd.Series(
+        {pid: hybrid_score_map.get(pid, 0.0) for pid in hybrid_recs}
+    ).sort_values(ascending=True)
+    hybrid_titles = [
+        product_lookup.loc[pid, "product_title"] if pid in product_lookup.index else pid
+        for pid in hybrid_scores_series.index
+    ]
+
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.barh(hybrid_titles, hybrid_scores_series.values, color="#6C8CD5")
+    ax.set_title("Hybrid recommender scores for demo user")
+    ax.set_xlabel("Blended relevance score")
+    plt.tight_layout()
+    save_figure(fig, f"hybrid_recs_user_{demo_user}.png")
+    plt.show()
 
 # %% [markdown]
 # ## 13. Visualization Bundle
 # 
 # Generate publication-ready visuals (all saved to `figures/`):
 # - Review sentiment vs. verified rate
-# - Heatmap of rating counts
-# - Static category-volume bar chart
+# - (Earlier sections) EDA overview, sentiment vs. rating, and hybrid recommendation spotlight
 
 # %%
 viz_df = df.copy()
@@ -681,50 +714,6 @@ ax.set_title("Sentiment distribution by Verified Purchase flag")
 ax.set_xlabel("Verified Purchase (0 = N, 1 = Y)")
 plt.tight_layout()
 save_figure(fig, "sentiment_by_verified.png")
-plt.show()
-
-pivot_table = (
-    viz_df.pivot_table(
-        index="product_category",
-        columns="star_rating",
-        values="review_id",
-        aggfunc="count",
-    )
-    .fillna(0)
-    .sort_values(by=5.0, ascending=False)
-    .head(15)
-)
-
-fig, ax = plt.subplots(figsize=(10, 6))
-sns.heatmap(pivot_table, cmap="viridis", ax=ax)
-ax.set_title("Top Categories vs. Rating Counts")
-plt.tight_layout()
-save_figure(fig, "category_rating_heatmap.png")
-plt.show()
-
-category_summary = (
-    viz_df.groupby("product_category")["review_id"]
-    .count()
-    .reset_index()
-    .rename(columns={"review_id": "review_volume"})
-    .sort_values("review_volume", ascending=False)
-    .head(20)
-)
-
-fig, ax = plt.subplots(figsize=(10, 5))
-sns.barplot(
-    data=category_summary,
-    x="product_category",
-    y="review_volume",
-    ax=ax,
-    palette="viridis",
-)
-ax.set_title("Top Product Categories by Review Volume")
-ax.set_xlabel("Product Category")
-ax.set_ylabel("Review Count")
-plt.xticks(rotation=45, ha="right")
-plt.tight_layout()
-save_figure(fig, "top_categories_bar.png")
 plt.show()
 
 # %% [markdown]
