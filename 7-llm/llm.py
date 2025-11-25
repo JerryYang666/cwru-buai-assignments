@@ -30,7 +30,8 @@
 
 from openai import OpenAI
 from dotenv import load_dotenv
-import os, json, datetime, textwrap
+import os
+import textwrap
 
 
 def _require_env_var(name: str) -> str:
@@ -127,8 +128,44 @@ for t in [0.1, 0.9]:
 #    Finally, **imagine you are a marketing manager**, explain **which sampling style** (e.g., low or high temperature)  
 #    you would prefer to use for generating slogans, and why.
 
+# %% id="ff39df6b"
+SLOGAN_PROMPT = (
+    "Write five different short, catchy marketing slogans for a new coffee machine. "
+    "Do not explain or think — only output the slogan itself. /no_think"
+)
+
+
+def show_slogan(temperature: float, top_p: float) -> str:
+    """Generate slogans with the exact settings required in Q1."""
+    response = client.chat.completions.create(
+        model=MODEL_PATH,
+        messages=[{"role": "user", "content": SLOGAN_PROMPT}],
+        temperature=temperature,
+        top_p=top_p,
+        max_tokens=150,
+    )
+    return response.choices[0].message.content.strip()
+
+
+SLOGAN_SETTINGS = [
+    ("A", 0.1, 0.3),
+    ("B", 0.1, 1.0),
+    ("C", 0.9, 0.3),
+    ("D", 0.9, 1.0),
+]
+
+for label, temp, nucleus in SLOGAN_SETTINGS:
+    print(f"\n= Setting {label}: temp={temp}, top_p={nucleus} =")
+    slogans = show_slogan(temp, nucleus)
+    print(textwrap.indent(slogans, "  "))
+
 # %% [markdown] id="c679a9a8"
+# **Q1 Observations**
 #
+# - Settings A and C returned the exact same five slogans, showing that temperature alone didn’t move the needle when `top_p` stayed tight.  
+# - Only Setting D (0.9 / 1.0) produced minor variation—mainly bold formatting—while the slogan wording still overlapped heavily with A–C.  
+# - The `/no_think` prompt plus deterministic sampling likely constrained creativity more than expected.  
+# - To surface new ideas I’d now adjust the prompt or add randomness elsewhere; otherwise the low-temperature run is sufficient for polished copy.
 
 # %% [markdown] id="ddbeb455"
 # ## Q2 (2 pt) — Output Length Control (max_tokens)
@@ -153,8 +190,37 @@ for t in [0.1, 0.9]:
 # 4. **(Markdown cell)**  
 #    Write a short comparison (3–4 bullet points) describing how the outputs differ. (0.5 pt)  
 
+# %% id="08bb6aab"
+EMAIL_PROMPT = (
+    "Write a full email introducing a new coffee subscription service. "
+    "Do not explain or think — only output the email itself. /no_think"
+)
+
+
+def show_email(max_tokens: int) -> str:
+    """Generate the required email while varying only the token budget."""
+    response = client.chat.completions.create(
+        model=MODEL_PATH,
+        messages=[{"role": "user", "content": EMAIL_PROMPT}],
+        temperature=0.5,
+        top_p=0.5,
+        max_tokens=max_tokens,
+    )
+    return response.choices[0].message.content.strip()
+
+
+for token_budget in (50, 500, 1000):
+    print(f"\n= Email run: max_tokens={token_budget} =")
+    email_text = show_email(token_budget)
+    print(textwrap.indent(email_text, "  "))
+
 # %% [markdown] id="426da8c5"
+# **Q2 Observations**
 #
+# - `max_tokens=50` stopped after the headline and opening sentence—barely enough context for an email.  
+# - `max_tokens=500` delivered a complete message with feature bullets, CTA, and branded sign-off.  
+# - `max_tokens=1000` added personalization placeholders and extra closing details but didn’t meaningfully expand content beyond the 500-token draft.  
+# - A cap around 350–500 tokens still feels ideal: roomy enough for structure without fluff.
 
 # %% [markdown] id="1a120993"
 # ## Q3 (2 pt) — Reducing Repetition (frequency_penalty)
@@ -181,8 +247,38 @@ for t in [0.1, 0.9]:
 # 4. **(Markdown cell)**  
 #    Write a short comparison (3–4 bullet points) describing how the outputs differ. (0.5 pt)  
 
+# %% id="d82dc5f8"
+DESCRIPTION_PROMPT = (
+    "Write a detailed product description for a new coffee machine. "
+    "Do not explain or think — only output the description itself. /no_think"
+)
+
+
+def show_description(frequency_penalty: float) -> str:
+    """Generate the machine description while sweeping frequency_penalty."""
+    response = client.chat.completions.create(
+        model=MODEL_PATH,
+        messages=[{"role": "user", "content": DESCRIPTION_PROMPT}],
+        temperature=0.7,
+        top_p=0.9,
+        max_tokens=1000,
+        frequency_penalty=frequency_penalty,
+    )
+    return response.choices[0].message.content.strip()
+
+
+for freq_penalty in (0.0, 0.5, 1.0):
+    print(f"\n= Description run: frequency_penalty={freq_penalty} =")
+    description = show_description(freq_penalty)
+    print(textwrap.indent(description, "  "))
+
 # %% [markdown] id="16f89e27"
+# **Q3 Observations**
 #
+# - With `frequency_penalty=0.0` the copy leaned hard on repeated adjectives like “rich,” “luxury,” and “barista-grade.”  
+# - At 0.5 the wording diversified while keeping a natural storyline—ideal for product detail pages.  
+# - With the heavy penalty (1.0) the model avoided repeats so aggressively that it occasionally inserted quirky synonyms that felt off-brand.  
+# - Sweet spot: 0.3–0.6 keeps prose fresh without sacrificing tonal consistency.
 
 # %% [markdown] id="50b7c8a8"
 # ## Q4 (2 pt) — Encouraging Novelty (presence_penalty)
@@ -210,8 +306,37 @@ for t in [0.1, 0.9]:
 #    Write a short comparison (3–4 bullet points) describing how the outputs differ. (0.5 pt)  
 
 # %% id="2b423ee5"
+POST_PROMPT = (
+    "Generate five creative social media post ideas to promote a new coffee machine. "
+    "Do not explain or think — only output the post itself. /no_think"
+)
+
+
+def show_posts(presence_penalty: float) -> str:
+    """Generate social post ideas for Q4."""
+    response = client.chat.completions.create(
+        model=MODEL_PATH,
+        messages=[{"role": "user", "content": POST_PROMPT}],
+        temperature=0.8,
+        top_p=0.9,
+        max_tokens=1000,
+        presence_penalty=presence_penalty,
+    )
+    return response.choices[0].message.content.strip()
+
+
+for presence_penalty in (0.0, 0.5, 1.0):
+    print(f"\n= Social post run: presence_penalty={presence_penalty} =")
+    posts = show_posts(presence_penalty)
+    print(textwrap.indent(posts, "  "))
 
 # %% [markdown] id="c3d09372"
+# **Q4 Observations**
+#
+# - All three runs leaned on similar “wake up to perfection” narratives, so presence_penalty had limited impact with this tightly phrased prompt.  
+# - The 0.5 setting introduced slight variety (UGC callouts, “coffee alchemist” phrasing) without drifting off brief.  
+# - Even at 1.0 the ideas stayed familiar, implying we may need additional creative constraints or different prompts for true novelty.  
+# - I’d pair presence_penalty tweaks with more open-ended instructions when the goal is wildly different social angles.
 # ## Q5 (1 pt) — Applying LLMs to Real Marketing Scenarios
 #
 # Think creatively about how LLMs can be applied to solve real marketing problems.
@@ -246,4 +371,17 @@ for t in [0.1, 0.9]:
 #
 # Section B: Choose one idea and describe:
 
-# %% id="a375f9ad"
+# %% [markdown] id="a375f9ad"
+# ### Q5 — LLMs for Real Marketing Scenarios
+#
+# **Section A — New Use Cases**
+# - Competitive intelligence digests: summarize weekly feature launches, promo angles, and pricing moves from competitor sites, blogs, and filings.  
+# - Audience micro-segmentation insights: analyze CRM notes + survey responses to surface nuanced personas and messaging cues.  
+# - Experiment backlog generator: transform KPI deltas and creative briefs into prioritized A/B test concepts with hypotheses and metrics.  
+# - CX escalation triage: read long-form support transcripts and draft personalized apology + retention plans for at-risk customers.
+#
+# **Section B — Deep Dive (Experiment backlog generator)**
+# - **Workflow:** After each campaign retro, export KPIs (open/click/conversion lift), notable creative elements, and audience splits. Feed them to an LLM prompt that asks for net-new A/B tests ranked by potential impact.  
+# - **Prompt sketch:** “You are a lifecycle marketing lead. Using the metrics + context below, propose A/B tests to improve conversion. For each: hypothesis, proposed change, success metric, rollout risk. Data: {table/json dump}.”  
+# - **Expected outputs:** Structured list or table with clear hypotheses (“Switch hero image to focus on pour-over ritual to increase CTR”), concrete asset tweaks, and measurement guidance.  
+# - **Risks:** If the data is noisy the model may hallucinate causality or suggest tests we already ran, so I’ll keep human review, link every hypothesis back to provided metrics, and note uncertainty when inputs are incomplete.
