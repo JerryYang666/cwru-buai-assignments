@@ -1,0 +1,7 @@
+,label,type,terms
+0,negative,top_positive,"return, junk, waste, poor, useless, terrible, horrible, look like, break, disappointed, send, properly, box, crap, don buy"
+1,negative,top_negative,"great, love, good, price, nice, easy, perfect, fine, job, awesome, need, excellent, amazing, sturdy, bit"
+2,neutral,top_positive,"okay, picture, probably, bad, bit, fine, wish, expect, pretty good, need perfect, move, job, wouldn, don recommend, loud"
+3,neutral,top_negative,"box, worth, happy, excellent, look like, junk, properly, perfectly, work fine, crap, ship, waste, true, require, mixer"
+4,positive,top_positive,"great, love, excellent, perfect, awesome, easy, amazing, perfectly, good, nice, exactly, pleased, price, happy, great product"
+5,positive,top_negative,"return, bad, break, poor, send, okay, pay, fall, didn, disappointed, try, think, doesn, cheap, appear"

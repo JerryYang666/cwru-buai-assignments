@@ -1,0 +1,13 @@
+{
+  "majority_baseline": {
+    "accuracy": 0.8051873198847262,
+    "macro_f1": 0.29736057896977436,
+    "weighted_f1": 0.7182929028601294,
+    "majority_class": "positive"
+  },
+  "lexicon_baseline": {
+    "accuracy": 0.693371757925072,
+    "macro_f1": 0.489051548735742,
+    "weighted_f1": 0.7409624701257345
+  }
+}
