@@ -1,0 +1,4 @@
+marketplace,customer_id,review_id,product_id,product_parent,product_title,product_category,star_rating,helpful_votes,total_votes,vine,verified_purchase,review_headline,review_body,review_date
+US,45610553,RMDCHWD0Y5OZ9,B00HH62VB6,618218723,AGPtekÂ® 10 Isolated Output 9V 12V 18V Guitar Pedal Board Power Supply Effect Pedals with Isolated Short Cricuit / Overcurrent Protection,Musical Instruments,3.0,0.0,1.0,N,N,Three Stars,"Works very good, but induces ALOT of noise.",2015-08-31
+US,14640079,RZSL0BALIYUNU,B003LRN53I,986692292,Sennheiser HD203 Closed-Back DJ Headphones,Musical Instruments,5.0,0.0,0.0,N,Y,Five Stars,Nice headphones at a reasonable price.,2015-08-31
+US,6111003,RIZR67JKUDBI0,B0006VMBHI,603261968,AudioQuest LP record clean brush,Musical Instruments,3.0,0.0,1.0,N,Y,Three Stars,removes dust. does not clean,2015-08-31

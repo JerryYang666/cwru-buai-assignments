@@ -8,6 +8,7 @@ dependencies = [
     "en-core-web-md",
     "matplotlib>=3.10.6",
     "pandas>=2.3.2",
+    "python-dotenv>=1.2.1",
     "scikit-learn>=1.7.2",
     "seaborn>=0.13.2",
     "spacy>=3.8.8",
