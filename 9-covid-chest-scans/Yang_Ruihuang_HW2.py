@@ -76,9 +76,6 @@ from sklearn.model_selection import train_test_split
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Subset
 
-IMG_SIZE = 224
-BATCH_SIZE = 32
-
 # Temporary dataset without transforms – just to get labels for splitting
 tmp_dataset = datasets.ImageFolder(base_dir)
 print("Classes:", tmp_dataset.classes)   # should be ['COVID-19', 'Non-COVID-19']
@@ -161,7 +158,7 @@ print("Total validation noncovid images:", val_noncovid_count)
 from torch import nn
 
 # Update this list to the GPUs you want to leverage (e.g., [0] or [2, 3])
-GPU_IDS = [0, 1, 2, 3]
+GPU_IDS = [0, 1]
 
 if torch.cuda.is_available() and GPU_IDS:
     available_gpu_count = torch.cuda.device_count()
