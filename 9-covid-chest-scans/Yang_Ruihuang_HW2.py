@@ -151,3 +151,203 @@ print("Total validation noncovid images:", val_noncovid_count)
 
 # %% [markdown] id="AAusz81MMneV"
 # Make sure you run all of your code so that the output of each code block appears below it.  Once you are done, download your final `.ipynb` file (File -> Download .ipynb) and submit it on Canvas. Name your file as follows: LastName_FirstName_HW2.ipynb
+
+# %% [markdown] id="Q1_intro"
+# ## Question 1 – Simple CNN baseline (PyTorch implementation)
+# We follow the requested architecture (3 conv + 3 max-pooling blocks, ReLU activations, 128-unit dense head, RMSprop @ 5e-5) and keep the training input at 64×64 without augmentation.  
+# The code below also lets us pick which GPU(s) to use. By default it will fan out across GPUs `0-3`, but you can set `GPU_IDS = [0]` if you only want GPU 0.
+
+# %% id="Q1_device_setup"
+from torch import nn
+
+# Update this list to the GPUs you want to leverage (e.g., [0] or [2, 3])
+GPU_IDS = [0, 1, 2, 3]
+
+if torch.cuda.is_available() and GPU_IDS:
+    available_gpu_count = torch.cuda.device_count()
+    invalid_gpu_ids = [gid for gid in GPU_IDS if gid >= available_gpu_count]
+    if invalid_gpu_ids:
+        raise ValueError(f"Requested GPU IDs {invalid_gpu_ids} but only {available_gpu_count} CUDA devices detected.")
+    primary_gpu = GPU_IDS[0]
+    torch.cuda.set_device(primary_gpu)
+    device = torch.device(f"cuda:{primary_gpu}")
+else:
+    GPU_IDS = []
+    device = torch.device("cpu")
+
+print(f"Training on: {device}")
+if len(GPU_IDS) > 1:
+    print(f"DataParallel across GPUs: {GPU_IDS}")
+
+IMG_SIZE_Q1 = 64
+BATCH_SIZE_Q1 = 32
+EPOCHS_Q1 = 50
+PIN_MEMORY = torch.cuda.is_available()
+NUM_WORKERS = min(8, os.cpu_count() or 1)
+
+train_transforms = transforms.Compose(
+    [
+        transforms.Resize((IMG_SIZE_Q1, IMG_SIZE_Q1)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+    ]
+)
+val_transforms = transforms.Compose(
+    [
+        transforms.Resize((IMG_SIZE_Q1, IMG_SIZE_Q1)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+    ]
+)
+
+train_dataset = datasets.ImageFolder(base_dir, transform=train_transforms)
+val_dataset = datasets.ImageFolder(base_dir, transform=val_transforms)
+
+train_subset = Subset(train_dataset, train_idx)
+val_subset = Subset(val_dataset, val_idx)
+
+train_loader = DataLoader(
+    train_subset,
+    batch_size=BATCH_SIZE_Q1,
+    shuffle=True,
+    num_workers=NUM_WORKERS,
+    pin_memory=PIN_MEMORY,
+)
+val_loader = DataLoader(
+    val_subset,
+    batch_size=BATCH_SIZE_Q1,
+    shuffle=False,
+    num_workers=NUM_WORKERS,
+    pin_memory=PIN_MEMORY,
+)
+
+print(f"Train batches: {len(train_loader)} | Val batches: {len(val_loader)}")
+
+# %% id="Q1_model_training"
+class SimpleCovidCNN(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 32, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+        )
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(64 * (IMG_SIZE_Q1 // 8) * (IMG_SIZE_Q1 // 8), 128),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.3),
+            nn.Linear(128, 2),
+        )
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.classifier(x)
+        return x
+
+
+base_model = SimpleCovidCNN().to(device)
+if GPU_IDS:
+    base_model = base_model.to(device)
+if len(GPU_IDS) > 1:
+    model_q1 = nn.DataParallel(base_model, device_ids=GPU_IDS)
+else:
+    model_q1 = base_model
+
+criterion = nn.CrossEntropyLoss()
+optimizer = torch.optim.RMSprop(model_q1.parameters(), lr=5e-5)
+
+history_q1 = {"train_loss": [], "val_loss": [], "train_acc": [], "val_acc": []}
+
+for epoch in range(1, EPOCHS_Q1 + 1):
+    model_q1.train()
+    train_loss = 0.0
+    train_correct = 0
+    total_train = 0
+
+    for images, labels in train_loader:
+        images = images.to(device, non_blocking=True)
+        labels = labels.to(device, non_blocking=True)
+
+        optimizer.zero_grad()
+        outputs = model_q1(images)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+
+        train_loss += loss.item() * images.size(0)
+        train_correct += (outputs.argmax(dim=1) == labels).sum().item()
+        total_train += images.size(0)
+
+    avg_train_loss = train_loss / total_train
+    train_accuracy = train_correct / total_train
+
+    model_q1.eval()
+    val_loss = 0.0
+    val_correct = 0
+    total_val = 0
+
+    with torch.no_grad():
+        for images, labels in val_loader:
+            images = images.to(device, non_blocking=True)
+            labels = labels.to(device, non_blocking=True)
+
+            outputs = model_q1(images)
+            loss = criterion(outputs, labels)
+
+            val_loss += loss.item() * images.size(0)
+            val_correct += (outputs.argmax(dim=1) == labels).sum().item()
+            total_val += images.size(0)
+
+    avg_val_loss = val_loss / total_val
+    val_accuracy = val_correct / total_val
+
+    history_q1["train_loss"].append(avg_train_loss)
+    history_q1["val_loss"].append(avg_val_loss)
+    history_q1["train_acc"].append(train_accuracy)
+    history_q1["val_acc"].append(val_accuracy)
+
+    print(
+        f"Epoch {epoch:02d}/{EPOCHS_Q1} | "
+        f"Train Loss: {avg_train_loss:.4f} | Train Acc: {train_accuracy:.4f} | "
+        f"Val Loss: {avg_val_loss:.4f} | Val Acc: {val_accuracy:.4f}"
+    )
+
+# %% id="Q1_plots"
+import matplotlib.pyplot as plt
+
+epochs_range = range(1, EPOCHS_Q1 + 1)
+
+plt.figure(figsize=(12, 4))
+plt.subplot(1, 2, 1)
+plt.plot(epochs_range, history_q1["train_loss"], label="Train Loss")
+plt.plot(epochs_range, history_q1["val_loss"], label="Val Loss")
+plt.xlabel("Epoch")
+plt.ylabel("Cross-Entropy Loss")
+plt.title("Question 1 – Loss Curves")
+plt.legend()
+
+plt.subplot(1, 2, 2)
+plt.plot(epochs_range, history_q1["train_acc"], label="Train Accuracy")
+plt.plot(epochs_range, history_q1["val_acc"], label="Val Accuracy")
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.title("Question 1 – Accuracy Curves")
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# %% [markdown] id="Q1_analysis"
+# ### Question 1 analysis
+# *If your plots show training accuracy continuing to improve while validation accuracy plateaus or degrades, that indicates overfitting.*  
+# Because the baseline CNN is relatively expressive compared to the size of our dataset and we are not using augmentation or regularization beyond dropout, you should expect:
+# - Training loss to keep falling and accuracy to approach 100%.  
+# - Validation curves to level off or diverge after ~15–20 epochs, signaling the model has memorized the training set.  
+# - Slightly higher validation loss than training loss even when accuracies are similar, due to more confident (and sometimes wrong) predictions on the validation set.  
+# Document the exact epoch where the gap opens up in your report to demonstrate that the model is overfitting and motivate the transfer-learning experiment in Question 2.
