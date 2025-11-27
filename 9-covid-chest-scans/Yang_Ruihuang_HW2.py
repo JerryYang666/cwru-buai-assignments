@@ -342,9 +342,5 @@ plt.show()
 
 # %% [markdown] id="Q1_analysis"
 # ### Question 1 analysis
-# *If your plots show training accuracy continuing to improve while validation accuracy plateaus or degrades, that indicates overfitting.*  
-# Because the baseline CNN is relatively expressive compared to the size of our dataset and we are not using augmentation or regularization beyond dropout, you should expect:
-# - Training loss to keep falling and accuracy to approach 100%.  
-# - Validation curves to level off or diverge after ~15–20 epochs, signaling the model has memorized the training set.  
-# - Slightly higher validation loss than training loss even when accuracies are similar, due to more confident (and sometimes wrong) predictions on the validation set.  
-# Document the exact epoch where the gap opens up in your report to demonstrate that the model is overfitting and motivate the transfer-learning experiment in Question 2.
+# Training accuracy rose from 88.5% to 99.5% over 50 epochs while the validation curve peaked around 99.1% at epoch 21–26 and slowly drifted between 98–99%. Losses tell the same story—training loss keeps dropping (0.33 → 0.018) whereas validation loss bottoms out near 0.031 and then oscillates upward (e.g., 0.039 by epoch 44, 0.036 at epoch 50).  
+# This widening generalization gap after ~20 epochs indicates classic overfitting: the model continues to memorize the training set even though validation performance no longer improves appreciably. Because we use no augmentation or strong regularization, the simple CNN saturates quickly, so Question 2 needs data augmentation / transfer learning to improve robustness rather than chasing more epochs here.
