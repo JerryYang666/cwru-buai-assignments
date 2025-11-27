@@ -74,6 +74,7 @@ print("Subfolders:", os.listdir(base_dir))
 # %% colab={"base_uri": "https://localhost:8080/"} id="LuoIdHHvZW8T" outputId="0c470d5d-8ed5-4878-ee0a-a24f818048ec"
 from sklearn.model_selection import train_test_split
 from torchvision import datasets, transforms
+from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
 from torch.utils.data import DataLoader, Subset
 
 # Temporary dataset without transforms – just to get labels for splitting
@@ -177,7 +178,7 @@ IMG_SIZE_Q1 = 64
 BATCH_SIZE_Q1 = 32
 EPOCHS_Q1 = 50
 PIN_MEMORY = torch.cuda.is_available()
-NUM_WORKERS = min(8, os.cpu_count() or 1)
+NUM_WORKERS = min(16, os.cpu_count() or 1)
 
 train_transforms = transforms.Compose(
     [
@@ -341,3 +342,184 @@ plt.show()
 # ### Question 1 analysis
 # Training accuracy rose from 88.5% to 99.5% over 50 epochs while the validation curve peaked around 99.1% at epoch 21–26 and slowly drifted between 98–99%. Losses tell the same story—training loss keeps dropping (0.33 → 0.018) whereas validation loss bottoms out near 0.031 and then oscillates upward (e.g., 0.039 by epoch 44, 0.036 at epoch 50).  
 # This widening generalization gap after ~20 epochs indicates classic overfitting: the model continues to memorize the training set even though validation performance no longer improves appreciably. Because we use no augmentation or strong regularization, the simple CNN saturates quickly, so Question 2 needs data augmentation / transfer learning to improve robustness rather than chasing more epochs here.
+
+# %% [markdown] id="Q2_intro"
+# ## Question 2 – Transfer learning + augmentation
+
+# %% id="Q2_data"
+IMG_SIZE_Q2 = IMG_SIZE_Q1
+BATCH_SIZE_Q2 = BATCH_SIZE_Q1
+EPOCHS_Q2 = 100
+USE_AMP = torch.cuda.is_available()
+
+imagenet_mean = [0.485, 0.456, 0.406]
+imagenet_std = [0.229, 0.224, 0.225]
+
+train_aug_transforms_q2 = transforms.Compose(
+    [
+        transforms.RandomResizedCrop(IMG_SIZE_Q2, scale=(0.8, 1.0)),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(10),
+        transforms.ColorJitter(brightness=0.15, contrast=0.15, saturation=0.1),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=imagenet_mean, std=imagenet_std),
+    ]
+)
+
+val_transforms_q2 = transforms.Compose(
+    [
+        transforms.Resize((IMG_SIZE_Q2, IMG_SIZE_Q2)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=imagenet_mean, std=imagenet_std),
+    ]
+)
+
+train_dataset_q2 = datasets.ImageFolder(base_dir, transform=train_aug_transforms_q2)
+val_dataset_q2 = datasets.ImageFolder(base_dir, transform=val_transforms_q2)
+
+train_subset_q2 = Subset(train_dataset_q2, train_idx)
+val_subset_q2 = Subset(val_dataset_q2, val_idx)
+
+train_loader_q2 = DataLoader(
+    train_subset_q2,
+    batch_size=BATCH_SIZE_Q2,
+    shuffle=True,
+    num_workers=NUM_WORKERS,
+    pin_memory=PIN_MEMORY,
+)
+val_loader_q2 = DataLoader(
+    val_subset_q2,
+    batch_size=BATCH_SIZE_Q2,
+    shuffle=False,
+    num_workers=NUM_WORKERS,
+    pin_memory=PIN_MEMORY,
+)
+
+print(f"[Q2] Train batches: {len(train_loader_q2)} | Val batches: {len(val_loader_q2)}")
+
+# %% id="Q2_model"
+weights = MobileNet_V2_Weights.IMAGENET1K_V2
+mobilenet_base = mobilenet_v2(weights=weights)
+
+for param in mobilenet_base.features.parameters():
+    param.requires_grad = False
+
+
+class TransferCovidNet(nn.Module):
+    def __init__(self, conv_base, feature_dim: int):
+        super().__init__()
+        self.conv_base = conv_base
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(feature_dim, 128),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.4),
+            nn.Linear(128, 2),
+        )
+
+    def forward(self, x):
+        x = self.conv_base(x)
+        x = self.avgpool(x)
+        x = self.classifier(x)
+        return x
+
+
+transfer_model = TransferCovidNet(mobilenet_base.features, mobilenet_base.last_channel).to(device)
+if len(GPU_IDS) > 1:
+    model_q2 = nn.DataParallel(transfer_model, device_ids=GPU_IDS)
+else:
+    model_q2 = transfer_model
+
+criterion_q2 = nn.CrossEntropyLoss()
+optimizer_q2 = torch.optim.RMSprop(filter(lambda p: p.requires_grad, model_q2.parameters()), lr=5e-5)
+scaler_q2 = torch.amp.GradScaler(device='cuda',enabled=USE_AMP)
+
+history_q2 = {"train_loss": [], "val_loss": [], "train_acc": [], "val_acc": []}
+
+# %% id="Q2_training"
+for epoch in range(1, EPOCHS_Q2 + 1):
+    model_q2.train()
+    train_loss = 0.0
+    train_correct = 0
+    total_train = 0
+
+    for images, labels in train_loader_q2:
+        images = images.to(device, non_blocking=True)
+        labels = labels.to(device, non_blocking=True)
+
+        optimizer_q2.zero_grad()
+        with torch.amp.autocast(device_type=device.type,enabled=USE_AMP):
+            outputs = model_q2(images)
+            loss = criterion_q2(outputs, labels)
+        scaler_q2.scale(loss).backward()
+        scaler_q2.step(optimizer_q2)
+        scaler_q2.update()
+
+        train_loss += loss.item() * images.size(0)
+        train_correct += (outputs.argmax(dim=1) == labels).sum().item()
+        total_train += images.size(0)
+
+    avg_train_loss = train_loss / total_train
+    train_accuracy = train_correct / total_train
+
+    model_q2.eval()
+    val_loss = 0.0
+    val_correct = 0
+    total_val = 0
+
+    with torch.no_grad():
+        for images, labels in val_loader_q2:
+            images = images.to(device, non_blocking=True)
+            labels = labels.to(device, non_blocking=True)
+
+            with torch.amp.autocast(device_type=device.type,enabled=USE_AMP):
+                outputs = model_q2(images)
+                loss = criterion_q2(outputs, labels)
+
+            val_loss += loss.item() * images.size(0)
+            val_correct += (outputs.argmax(dim=1) == labels).sum().item()
+            total_val += images.size(0)
+
+    avg_val_loss = val_loss / total_val
+    val_accuracy = val_correct / total_val
+
+    history_q2["train_loss"].append(avg_train_loss)
+    history_q2["val_loss"].append(avg_val_loss)
+    history_q2["train_acc"].append(train_accuracy)
+    history_q2["val_acc"].append(val_accuracy)
+
+    print(
+        f"[Q2] Epoch {epoch:03d}/{EPOCHS_Q2} | "
+        f"Train Loss: {avg_train_loss:.4f} | Train Acc: {train_accuracy:.4f} | "
+        f"Val Loss: {avg_val_loss:.4f} | Val Acc: {val_accuracy:.4f}"
+    )
+
+# %% id="Q2_plots"
+plt.figure(figsize=(12, 4))
+plt.subplot(1, 2, 1)
+plt.plot(range(1, EPOCHS_Q2 + 1), history_q2["train_loss"], label="Train Loss")
+plt.plot(range(1, EPOCHS_Q2 + 1), history_q2["val_loss"], label="Val Loss")
+plt.xlabel("Epoch")
+plt.ylabel("Cross-Entropy Loss")
+plt.title("Question 2 - Loss Curves")
+plt.legend()
+
+plt.subplot(1, 2, 2)
+plt.plot(range(1, EPOCHS_Q2 + 1), history_q2["train_acc"], label="Train Accuracy")
+plt.plot(range(1, EPOCHS_Q2 + 1), history_q2["val_acc"], label="Val Accuracy")
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.title("Question 2 - Accuracy Curves")
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# %% [markdown] id="Q2_analysis"
+# ### Question 2 analysis
+# After adding augmentation and a frozen MobileNetV2 backbone, validation accuracy should stabilize at a higher ceiling with smaller gaps between training and validation curves compared to Question 1.  
+# Once training finishes, report:
+# - Epoch of best validation accuracy (expectation: high 98–99% with significantly lower variance).  
+# - Whether validation loss keeps decreasing for longer than in Q1 (data augmentation + pretrained filters add regularization).  
+# - How the computational cost compares (more epochs but fewer trainable parameters).  
+# Use those observations to justify why the transfer-learning model is preferable for deployment despite similar headline accuracy: it is less prone to overfitting and benefits from richer latent features learned on ImageNet.
