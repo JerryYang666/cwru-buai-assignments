@@ -151,13 +151,10 @@ print("Total validation noncovid images:", val_noncovid_count)
 
 # %% [markdown] id="Q1_intro"
 # ## Question 1 – Simple CNN baseline (PyTorch implementation)
-# We follow the requested architecture (3 conv + 3 max-pooling blocks, ReLU activations, 128-unit dense head, RMSprop @ 5e-5) and keep the training input at 64×64 without augmentation.  
-# The code below also lets us pick which GPU(s) to use. By default it will fan out across GPUs `0-3`, but you can set `GPU_IDS = [0]` if you only want GPU 0.
 
 # %% id="Q1_device_setup"
 from torch import nn
 
-# Update this list to the GPUs you want to leverage (e.g., [0] or [2, 3])
 GPU_IDS = [0, 1]
 
 if torch.cuda.is_available() and GPU_IDS:
@@ -327,7 +324,7 @@ plt.plot(epochs_range, history_q1["train_loss"], label="Train Loss")
 plt.plot(epochs_range, history_q1["val_loss"], label="Val Loss")
 plt.xlabel("Epoch")
 plt.ylabel("Cross-Entropy Loss")
-plt.title("Question 1 – Loss Curves")
+plt.title("Question 1 - Loss Curves")
 plt.legend()
 
 plt.subplot(1, 2, 2)
@@ -335,7 +332,7 @@ plt.plot(epochs_range, history_q1["train_acc"], label="Train Accuracy")
 plt.plot(epochs_range, history_q1["val_acc"], label="Val Accuracy")
 plt.xlabel("Epoch")
 plt.ylabel("Accuracy")
-plt.title("Question 1 – Accuracy Curves")
+plt.title("Question 1 - Accuracy Curves")
 plt.legend()
 plt.tight_layout()
 plt.show()
