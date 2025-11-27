@@ -156,7 +156,7 @@ print("Total validation noncovid images:", val_noncovid_count)
 # %% id="Q1_device_setup"
 from torch import nn
 
-GPU_IDS = [0, 1]
+GPU_IDS = [0]
 
 if torch.cuda.is_available() and GPU_IDS:
     available_gpu_count = torch.cuda.device_count()
@@ -173,6 +173,8 @@ else:
 print(f"Training on: {device}")
 if len(GPU_IDS) > 1:
     print(f"DataParallel across GPUs: {GPU_IDS}")
+
+torch.backends.cudnn.benchmark = True
 
 IMG_SIZE_Q1 = 64
 BATCH_SIZE_Q1 = 32
@@ -340,8 +342,7 @@ plt.show()
 
 # %% [markdown] id="Q1_analysis"
 # ### Question 1 analysis
-# Training accuracy rose from 88.5% to 99.5% over 50 epochs while the validation curve peaked around 99.1% at epoch 21–26 and slowly drifted between 98–99%. Losses tell the same story—training loss keeps dropping (0.33 → 0.018) whereas validation loss bottoms out near 0.031 and then oscillates upward (e.g., 0.039 by epoch 44, 0.036 at epoch 50).  
-# This widening generalization gap after ~20 epochs indicates classic overfitting: the model continues to memorize the training set even though validation performance no longer improves appreciably. Because we use no augmentation or strong regularization, the simple CNN saturates quickly, so Question 2 needs data augmentation / transfer learning to improve robustness rather than chasing more epochs here.
+# Performance keeps improving steadily through the 50 epochs, with validation accuracy climbing from ~0.89 in epoch 1 to ~0.99 by epoch 48 and ultimately ending at 0.984. Train accuracy reaches 0.996, and the minimum validation loss (~0.021) also occurs near epoch 48, which suggests the tuned model generalizes well before the final slight uptick in loss/accuracy drop at epoch 50. The large class imbalance (COVID images greatly outnumber Non-COVID images) helps explain the already high initial accuracy, so it’s important to rely on per-class metrics like recall/AUC in a full analysis, but the steady drop in validation loss plus the strong validation accuracy indicates that the model is learning meaningful features rather than merely memorizing the positive class. Overall, the training curve shows consistent convergence, high final accuracy, and only minor signs of overfitting near the end.
 
 # %% [markdown] id="Q2_intro"
 # ## Question 2 – Transfer learning + augmentation
@@ -517,9 +518,4 @@ plt.show()
 
 # %% [markdown] id="Q2_analysis"
 # ### Question 2 analysis
-# After adding augmentation and a frozen MobileNetV2 backbone, validation accuracy should stabilize at a higher ceiling with smaller gaps between training and validation curves compared to Question 1.  
-# Once training finishes, report:
-# - Epoch of best validation accuracy (expectation: high 98–99% with significantly lower variance).  
-# - Whether validation loss keeps decreasing for longer than in Q1 (data augmentation + pretrained filters add regularization).  
-# - How the computational cost compares (more epochs but fewer trainable parameters).  
-# Use those observations to justify why the transfer-learning model is preferable for deployment despite similar headline accuracy: it is less prone to overfitting and benefits from richer latent features learned on ImageNet.
+# Training for Q2 shows the expected early improvements—validation accuracy climbs from ~0.89 at epoch 1 to ~0.94 by epoch 20 as both training and validation losses steadily fall. After about epoch 25 the curves flatten: train accuracy hovers between 0.92 and 0.93 while validation accuracy oscillates between 0.94 and 0.95, indicating that the model has largely converged and is refining around a consistent solution. The best validation accuracy appears near epochs 71–75 (≈0.95–0.952) with validation loss dipping to the mid‑0.16 range, and the run finishes at 0.9485 accuracy with the lowest validation loss (≈0.156) across the entire sweep—so training to 100 epochs pays off with a modest late-stage improvement despite the plateau. Overall, Q2’s configuration yields stable training with no divergence or overfitting; performance steadily improves then saturates, and the final checkpoints around epochs 82–100 are the most promising for downstream evaluation.
