@@ -15,8 +15,8 @@
 # %% [markdown]
 # # BUAI446 Capstone Project: Recommender System Based on Online Reviews
 #   
-# **Dataset:** `Amazon_Musical.csv`  
-# Dataset Relative Path: `data/Amazon_Musical.csv`  
+# **Dataset:** `Amazon_Last_Three_Years_Data.xlsx`  
+# Dataset Relative Path: `data/Amazon_Last_Three_Years_Data.xlsx`  
 # Group Members: Ruihuang Yang, Priyanshi Gupta  
 # CWRU NetIDs: rxy216, pxg398  
 # Due Date: 2025-12-02  
@@ -79,7 +79,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 SEED = 42  # Single source of truth for reproducibility
-SAMPLE_FRACTION = 0.01  # Set to 1.0 when moving to the full dataset
+SAMPLE_FRACTION = 1.0  # Set to 1.0 when moving to the full dataset
 MIN_USER_INTERACTIONS = 3
 MIN_ITEM_INTERACTIONS = 3
 MIN_ROWS_AFTER_FILTER = 2000
@@ -88,7 +88,7 @@ EMBEDDING_SIZE = 50
 TOP_K = 10
 MAX_EVAL_USERS = 400  # keep evaluation nimble during development
 
-DATA_PATH = Path("data") / "Amazon_Musical.csv"
+DATA_PATH = Path("data") / "Amazon_Last_Three_Years_Data.xlsx"
 FIGURES_PATH = Path("figures")
 FIGURES_PATH.mkdir(exist_ok=True)
 
@@ -140,7 +140,7 @@ def save_figure(fig: plt.Figure, filename: str) -> None:
 
 # %%
 assert DATA_PATH.exists(), f"Dataset not found at {DATA_PATH.resolve()}"
-raw_df = pd.read_csv(DATA_PATH)
+raw_df = pd.read_excel(DATA_PATH)
 print(f"Raw dataset shape: {raw_df.shape}")
 
 if SAMPLE_FRACTION < 1.0:
