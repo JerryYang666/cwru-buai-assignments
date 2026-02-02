@@ -1,5 +1,5 @@
 # cwru-buai-assignments
-repo for buai assignments
+repo for buai assignments: BUAI 435, 446, 445
 
 # index
 
